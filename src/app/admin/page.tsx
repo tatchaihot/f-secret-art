@@ -1,13 +1,12 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getAllAlbums, seedSampleData } from '@/lib/db';
+import { getAllAlbums, getAllAnnouncements, getAllFaqs, seedSampleData } from '@/lib/db';
 import AdminDashboardClient from './AdminDashboardClient';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard — Lumen Atelier Archive',
+  title: 'Admin Dashboard — F-Secret AI Art',
 };
-
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +18,6 @@ export default async function AdminPage() {
     redirect('/admin/login');
   }
 
-  // Ensure sample data is initialized if clean
   try {
     seedSampleData();
   } catch (e) {
@@ -27,6 +25,14 @@ export default async function AdminPage() {
   }
 
   const albums = getAllAlbums();
+  const announcements = getAllAnnouncements();
+  const faqs = getAllFaqs();
 
-  return <AdminDashboardClient initialAlbums={albums} />;
+  return (
+    <AdminDashboardClient
+      initialAlbums={albums}
+      initialAnnouncements={announcements}
+      initialFaqs={faqs}
+    />
+  );
 }

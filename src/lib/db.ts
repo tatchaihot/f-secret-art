@@ -11,7 +11,6 @@ if (!fs.existsSync(dbDir)) {
 
 export const db = new Database(dbPath);
 
-// Enable WAL mode for high performance concurrent reading/writing
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -27,6 +26,7 @@ db.exec(`
     coverImage TEXT,
     isPrivate INTEGER DEFAULT 0,
     passcode TEXT,
+    sortOrder INTEGER DEFAULT 0,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL
   );
@@ -47,7 +47,32 @@ db.exec(`
     createdAt TEXT NOT NULL,
     FOREIGN KEY (albumId) REFERENCES albums(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS announcements (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    imageUrl TEXT NOT NULL,
+    linkUrl TEXT,
+    isActive INTEGER DEFAULT 1,
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS faqs (
+    id TEXT PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT NOT NULL
+  );
 `);
+
+// Safe migration for sortOrder in albums
+try {
+  db.exec(`ALTER TABLE albums ADD COLUMN sortOrder INTEGER DEFAULT 0;`);
+} catch {
+  // column already exists
+}
 
 export interface Album {
   id: string;
@@ -59,6 +84,7 @@ export interface Album {
   coverImage: string | null;
   isPrivate: number;
   passcode: string | null;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
   photoCount?: number;
@@ -80,14 +106,32 @@ export interface Photo {
   createdAt: string;
 }
 
-// Albums DB Queries
+export interface Announcement {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  isActive: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+// ----------------- ALBUM QUERIES -----------------
 export function getAllAlbums(): Album[] {
   const stmt = db.prepare(`
     SELECT a.*, COUNT(p.id) as photoCount
     FROM albums a
     LEFT JOIN photos p ON a.id = p.albumId
     GROUP BY a.id
-    ORDER BY a.createdAt DESC
+    ORDER BY a.sortOrder ASC, a.createdAt DESC
   `);
   return stmt.all() as Album[];
 }
@@ -118,18 +162,15 @@ export function createAlbum(data: {
   title: string;
   slug?: string;
   description?: string;
-  clientName?: string;
-  eventDate?: string;
-  isPrivate?: boolean;
-  passcode?: string;
+  sortOrder?: number;
 }): Album {
   const id = 'alb_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
   const now = new Date().toISOString();
   const slug = (data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')) + '-' + Math.random().toString(36).substring(2, 6);
 
   const stmt = db.prepare(`
-    INSERT INTO albums (id, title, slug, description, clientName, eventDate, isPrivate, passcode, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO albums (id, title, slug, description, sortOrder, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -137,10 +178,7 @@ export function createAlbum(data: {
     data.title,
     slug,
     data.description || null,
-    data.clientName || null,
-    data.eventDate || now.split('T')[0],
-    data.isPrivate ? 1 : 0,
-    data.passcode || null,
+    data.sortOrder ?? 0,
     now,
     now
   );
@@ -153,7 +191,7 @@ export function updateAlbum(id: string, data: Partial<Album>): Album | null {
   const fields: string[] = [];
   const values: any[] = [];
 
-  const allowedFields = ['title', 'description', 'clientName', 'eventDate', 'coverImage', 'isPrivate', 'passcode'];
+  const allowedFields = ['title', 'description', 'sortOrder', 'coverImage'];
   for (const key of allowedFields) {
     if (key in data) {
       fields.push(`${key} = ?`);
@@ -195,7 +233,7 @@ export function deleteAlbum(id: string): boolean {
   return result.changes > 0;
 }
 
-// Photos DB Queries
+// ----------------- PHOTO QUERIES -----------------
 export function createPhoto(data: {
   albumId: string;
   originalName: string;
@@ -285,217 +323,203 @@ export function setAlbumCover(albumId: string, photoThumbUrl: string): boolean {
   return result.changes > 0;
 }
 
-// Initial Seeder for F-Secret AI Art Showcase Categories
+// ----------------- ANNOUNCEMENT QUERIES -----------------
+export function getAllAnnouncements(): Announcement[] {
+  const stmt = db.prepare(`SELECT * FROM announcements ORDER BY sortOrder ASC, createdAt DESC`);
+  return stmt.all() as Announcement[];
+}
+
+export function getActiveAnnouncements(): Announcement[] {
+  const stmt = db.prepare(`SELECT * FROM announcements WHERE isActive = 1 ORDER BY sortOrder ASC, createdAt DESC`);
+  return stmt.all() as Announcement[];
+}
+
+export function createAnnouncement(data: {
+  title: string;
+  imageUrl: string;
+  linkUrl?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}): Announcement {
+  const id = 'ann_' + Math.random().toString(36).substring(2, 9);
+  const now = new Date().toISOString();
+
+  const stmt = db.prepare(`
+    INSERT INTO announcements (id, title, imageUrl, linkUrl, isActive, sortOrder, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  stmt.run(
+    id,
+    data.title,
+    data.imageUrl,
+    data.linkUrl || null,
+    data.isActive !== false ? 1 : 0,
+    data.sortOrder ?? 0,
+    now
+  );
+
+  return db.prepare(`SELECT * FROM announcements WHERE id = ?`).get(id) as Announcement;
+}
+
+export function updateAnnouncement(id: string, data: Partial<Announcement>): Announcement | null {
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  const allowedFields = ['title', 'imageUrl', 'linkUrl', 'isActive', 'sortOrder'];
+  for (const key of allowedFields) {
+    if (key in data) {
+      fields.push(`${key} = ?`);
+      values.push((data as any)[key]);
+    }
+  }
+
+  if (fields.length === 0) return null;
+
+  values.push(id);
+  db.prepare(`UPDATE announcements SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return db.prepare(`SELECT * FROM announcements WHERE id = ?`).get(id) as Announcement;
+}
+
+export function deleteAnnouncement(id: string): boolean {
+  const stmt = db.prepare(`DELETE FROM announcements WHERE id = ?`);
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ----------------- FAQ QUERIES -----------------
+export function getAllFaqs(): FaqItem[] {
+  const stmt = db.prepare(`SELECT * FROM faqs ORDER BY sortOrder ASC, createdAt ASC`);
+  return stmt.all() as FaqItem[];
+}
+
+export function createFaq(data: {
+  question: string;
+  answer: string;
+  sortOrder?: number;
+}): FaqItem {
+  const id = 'faq_' + Math.random().toString(36).substring(2, 9);
+  const now = new Date().toISOString();
+
+  const stmt = db.prepare(`
+    INSERT INTO faqs (id, question, answer, sortOrder, createdAt)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  stmt.run(
+    id,
+    data.question,
+    data.answer,
+    data.sortOrder ?? 0,
+    now
+  );
+
+  return db.prepare(`SELECT * FROM faqs WHERE id = ?`).get(id) as FaqItem;
+}
+
+export function updateFaq(id: string, data: Partial<FaqItem>): FaqItem | null {
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  const allowedFields = ['question', 'answer', 'sortOrder'];
+  for (const key of allowedFields) {
+    if (key in data) {
+      fields.push(`${key} = ?`);
+      values.push((data as any)[key]);
+    }
+  }
+
+  if (fields.length === 0) return null;
+
+  values.push(id);
+  db.prepare(`UPDATE faqs SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return db.prepare(`SELECT * FROM faqs WHERE id = ?`).get(id) as FaqItem;
+}
+
+export function deleteFaq(id: string): boolean {
+  const stmt = db.prepare(`DELETE FROM faqs WHERE id = ?`);
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ----------------- SEED DATA -----------------
 export function seedSampleData() {
-  const count = db.prepare(`SELECT COUNT(*) as count FROM albums`).get() as { count: number };
-  if (count.count > 0) return;
+  const albumCount = db.prepare(`SELECT COUNT(*) as count FROM albums`).get() as { count: number };
+  const faqCount = db.prepare(`SELECT COUNT(*) as count FROM faqs`).get() as { count: number };
+  const annCount = db.prepare(`SELECT COUNT(*) as count FROM announcements`).get() as { count: number };
 
   const now = new Date().toISOString();
 
-  // 1. Realistic AI Fashion & Portraits
-  const alb1Id = 'alb_ai_fashion';
-  db.prepare(`
-    INSERT INTO albums (id, title, slug, description, clientName, eventDate, coverImage, isPrivate, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `).run(
-    alb1Id,
-    'Realistic AI Models & Fashion Portraits',
-    'realistic-ai-fashion-portraits',
-    'ภาพถ่ายโมเดลเสมือนคนจริง แฟชั่นนิตยสาร โฆษณาเสื้อผ้า และลุคสตูดิโอระดับไฮเอนด์ คมชัดทุกรายละเอียดผิวและเส้นผม',
-    'F-Secret Editorial Studio',
-    '2026-10-01',
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-    now,
-    now
-  );
-
-  const photos1 = [
-    {
-      id: 'pho_f1_1',
-      title: 'Studio Lighting Portrait Study',
-      url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1500,
-    },
-    {
-      id: 'pho_f1_2',
-      title: 'Haute Couture Silk Editorial',
-      url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1600,
-    },
-    {
-      id: 'pho_f1_3',
-      title: 'Monochrome Dramatic Shadow',
-      url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=600&q=75',
-      width: 1600,
-      height: 1067,
-    },
-    {
-      id: 'pho_f1_4',
-      title: 'Urban Streetwear Concept',
-      url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1600,
-    }
-  ];
-
-  for (const p of photos1) {
-    db.prepare(`
-      INSERT INTO photos (id, albumId, originalName, filename, originalUrl, previewUrl, thumbUrl, blurDataUrl, width, height, fileSize, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      p.id,
-      alb1Id,
-      p.title + '.jpg',
-      p.id + '.jpg',
-      p.url,
-      p.url,
-      p.thumb,
-      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWUxZTFlIi8+PC9zdmc+',
-      p.width,
-      p.height,
-      500000,
-      now
-    );
+  // Seed Announcements / Guide
+  if (annCount.count === 0) {
+    createAnnouncement({
+      title: 'คำแนะนำ: วิธีส่งรูปถ่ายสำหรับเทรน AI เพื่อให้ได้ภาพเหมือนและเป๊ะที่สุด',
+      imageUrl: '/guides/lora-guide.jpg',
+      linkUrl: '#guide-modal',
+      isActive: true,
+      sortOrder: 1,
+    });
   }
 
-  // 2. Commercial Product & Packaging
-  const alb2Id = 'alb_ai_product';
-  db.prepare(`
-    INSERT INTO albums (id, title, slug, description, clientName, eventDate, coverImage, isPrivate, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `).run(
-    alb2Id,
-    'Commercial Product & Ad Creatives',
-    'commercial-product-ad-creatives',
-    'ภาพโฆษณาสินค้า บรรจุภัณฑ์ และฉากหลังพรีเมียม สไตล์ 3D Luxury และสตูดิโอจัดแสง สำหรับยิงแอดและการตลาดออนไลน์',
-    'Brand Marketing Showcase',
-    '2026-10-05',
-    'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80',
-    now,
-    now
-  );
+  // Seed FAQs (Editable by Admin, NO 4k-8k mentions)
+  if (faqCount.count === 0) {
+    const defaultFaqs = [
+      {
+        question: 'สั่งทำภาพ AI โปรไฟล์ ต้องเตรียมรูปถ่ายอย่างไร?',
+        answer: 'เตรียมรูปถ่ายหน้าตรง หันซ้าย-ขวา ครึ่งตัว และเต็มตัว รวม 4–6 รูปที่ใบหน้าชัดเจน แสงสว่างพอดี ไม่มีฟิลเตอร์หนา และไม่มีคนอื่นในภาพ (สามารถดูตัวอย่างจากภาพอินโฟกราฟิกด้านบนได้เลยครับ)',
+        sortOrder: 1,
+      },
+      {
+        question: 'นำภาพไปใช้ในเชิงพาณิชย์ (ทำโปรไฟล์ธุรกิจ ยิงแอด ลงสินค้า) ได้ไหม?',
+        answer: 'ได้ 100% ครับ คุณจะได้รับสิทธิ์ในการนำภาพไปใช้งานเชิงพาณิชย์ โฆษณา หรือโปรโมทแบรนด์ส่วนตัวได้อย่างเต็มที่โดยไม่มีข้อผูกมัด',
+        sortOrder: 2,
+      },
+      {
+        question: 'ระยะเวลาในการจัดทำภาพใช้เวลากี่วัน?',
+        answer: 'โดยทั่วไปใช้เวลาเพียง 24 – 48 ชั่วโมงสำหรับส่งแบบร่างตัวอย่างให้ตรวจเช็กความพึงพอใจครับ',
+        sortOrder: 3,
+      },
+      {
+        question: 'สามารถปรับแก้งานได้หรือไม่?',
+        answer: 'สามารถปรับแต่งรายละเอียด เช่น ทรงผม สีหน้า โทนสีเสื้อผ้า หรือฉากหลัง เพื่อให้ได้ผลลัพธ์ที่ตรงใจและเป็นธรรมชาติที่สุดครับ',
+        sortOrder: 4,
+      },
+      {
+        question: 'ขั้นตอนการเริ่มสั่งงานทำอย่างไร?',
+        answer: 'เพียงเลือกสไตล์ที่ชอบจากเว็บนี้ แล้วทัก LINE ID: tatchaihot ส่งรูปที่ต้องการทำมาคุยรายละเอียดและประเมินราคาได้ทันทีครับ',
+        sortOrder: 5,
+      },
+    ];
 
-  const photos2 = [
-    {
-      id: 'pho_p2_1',
-      title: 'Luxury Perfume & Water Droplets',
-      url: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1600,
-    },
-    {
-      id: 'pho_p2_2',
-      title: 'Cosmetics Podium & Botanicals',
-      url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=75',
-      width: 1600,
-      height: 1067,
-    },
-    {
-      id: 'pho_p2_3',
-      title: 'Organic Skincare Light & Shadow',
-      url: 'https://images.unsplash.com/photo-1608248597359-00913f631484?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1608248597359-00913f631484?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1600,
+    for (const f of defaultFaqs) {
+      createFaq(f);
     }
-  ];
-
-  for (const p of photos2) {
-    db.prepare(`
-      INSERT INTO photos (id, albumId, originalName, filename, originalUrl, previewUrl, thumbUrl, blurDataUrl, width, height, fileSize, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      p.id,
-      alb2Id,
-      p.title + '.jpg',
-      p.id + '.jpg',
-      p.url,
-      p.url,
-      p.thumb,
-      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWYyMzIwIi8+PC9zdmc+',
-      p.width,
-      p.height,
-      480000,
-      now
-    );
   }
 
-  // 3. Cinematic Fantasy & Sci-Fi Concept Art
-  const alb3Id = 'alb_ai_cinematic';
-  db.prepare(`
-    INSERT INTO albums (id, title, slug, description, clientName, eventDate, coverImage, isPrivate, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `).run(
-    alb3Id,
-    'Cinematic Sci-Fi & Cyberpunk Concept Art',
-    'cinematic-scifi-cyberpunk-art',
-    'งานภาพยนตร์ โลกอนาคต ไซไฟ นีออน สเปเชียลเอฟเฟกต์ และคอนเซ็ปต์อาร์ตระดับ AAA สำหรับงานเกม นิยาย และมีเดียโปรดักชัน',
-    'F-Secret World Building',
-    '2026-10-08',
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
-    now,
-    now
-  );
+  // Seed Albums if empty
+  if (albumCount.count === 0) {
+    const alb1 = createAlbum({
+      title: 'Realistic AI Models & Fashion Portraits',
+      description: 'ภาพถ่ายโมเดลเสมือนคนจริง แฟชั่นนิตยสาร โฆษณาเสื้อผ้า และลุคสตูดิโอระดับไฮเอนด์ คมชัดทุกรายละเอียดผิวและเส้นผม',
+      sortOrder: 1,
+    });
 
-  const photos3 = [
-    {
-      id: 'pho_c3_1',
-      title: 'Neon Megacity Vista',
-      url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=75',
-      width: 1600,
-      height: 1067,
-    },
-    {
-      id: 'pho_c3_2',
-      title: 'Cyber Samurai in the Rain',
-      url: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1600,
-    },
-    {
-      id: 'pho_c3_3',
-      title: 'Futuristic Horizon & Space Exploration',
-      url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=75',
-      width: 1600,
-      height: 1067,
-    }
-  ];
+    const alb2 = createAlbum({
+      title: 'Commercial Product & Ad Creatives',
+      description: 'ภาพโฆษณาสินค้า บรรจุภัณฑ์ และฉากหลังพรีเมียม สไตล์ 3D Luxury และสตูดิโอจัดแสง สำหรับยิงแอดและการตลาดออนไลน์',
+      sortOrder: 2,
+    });
 
-  for (const p of photos3) {
-    db.prepare(`
-      INSERT INTO photos (id, albumId, originalName, filename, originalUrl, previewUrl, thumbUrl, blurDataUrl, width, height, fileSize, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      p.id,
-      alb3Id,
-      p.title + '.jpg',
-      p.id + '.jpg',
-      p.url,
-      p.url,
-      p.thumb,
-      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWEyMDM1Ii8+PC9zdmc+',
-      p.width,
-      p.height,
-      540000,
-      now
-    );
+    const alb3 = createAlbum({
+      title: 'Cinematic Sci-Fi & Cyberpunk Concept Art',
+      description: 'งานภาพยนตร์ โลกอนาคต ไซไฟ นีออน สเปเชียลเอฟเฟกต์ และคอนเซ็ปต์อาร์ตระดับ AAA สำหรับงานเกม นิยาย และมีเดียโปรดักชัน',
+      sortOrder: 3,
+    });
   }
 }
 
-// Automatically seed on initial launch if empty
 try {
   seedSampleData();
 } catch (e) {
-  console.error('Seed check note:', e);
+  console.error('Seed error:', e);
 }

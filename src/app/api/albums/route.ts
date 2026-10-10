@@ -20,10 +20,7 @@ export async function POST(req: Request) {
     const album = createAlbum({
       title: body.title.trim(),
       description: body.description?.trim(),
-      clientName: body.clientName?.trim(),
-      eventDate: body.eventDate,
-      isPrivate: !!body.isPrivate,
-      passcode: body.passcode?.trim(),
+      sortOrder: Number(body.sortOrder) || 0,
     });
 
     return NextResponse.json({ success: true, album });

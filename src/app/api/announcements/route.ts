@@ -1,0 +1,92 @@
+import { NextResponse } from 'next/server';
+import { getAllAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from '@/lib/db';
+import { processUploadedImage } from '@/lib/image-processor';
+
+export async function GET() {
+  try {
+    const announcements = getAllAnnouncements();
+    return NextResponse.json({ success: true, announcements });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const contentType = req.headers.get('content-type') || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      const file = formData.get('file') as File | null;
+      const title = formData.get('title') as string | null;
+      const linkUrl = formData.get('linkUrl') as string | null;
+      const sortOrder = formData.get('sortOrder') as string | null;
+
+      if (!file || !title) {
+        return NextResponse.json({ success: false, error: 'File and title are required' }, { status: 400 });
+      }
+
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const processed = await processUploadedImage(buffer, file.name);
+
+      const announcement = createAnnouncement({
+        title: title.trim(),
+        imageUrl: processed.previewUrl,
+        linkUrl: linkUrl?.trim() || undefined,
+        isActive: true,
+        sortOrder: Number(sortOrder) || 0,
+      });
+
+      return NextResponse.json({ success: true, announcement });
+    } else {
+      const body = await req.json();
+      const announcement = createAnnouncement({
+        title: body.title,
+        imageUrl: body.imageUrl,
+        linkUrl: body.linkUrl,
+        isActive: body.isActive !== false,
+        sortOrder: Number(body.sortOrder) || 0,
+      });
+
+      return NextResponse.json({ success: true, announcement });
+    }
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    if (!body.id) {
+      return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
+    }
+
+    const updated = updateAnnouncement(body.id, {
+      title: body.title,
+      imageUrl: body.imageUrl,
+      linkUrl: body.linkUrl,
+      isActive: body.isActive !== undefined ? (body.isActive ? 1 : 0) : undefined,
+      sortOrder: Number(body.sortOrder) || 0,
+    });
+
+    return NextResponse.json({ success: true, announcement: updated });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { id } = await req.json();
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
+    }
+
+    const ok = deleteAnnouncement(id);
+    return NextResponse.json({ success: ok });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

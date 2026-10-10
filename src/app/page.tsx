@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllAlbums, seedSampleData } from '@/lib/db';
+import { getAllAlbums, getActiveAnnouncements, getAllFaqs, seedSampleData } from '@/lib/db';
 import Navbar from '@/components/Navbar';
-import { HeroActions, LineContactCard, FaqSection } from '@/components/HomeClientSections';
-import { Sparkles, ArrowRight, Images, Calendar, CheckCircle2, ShieldCheck, Zap, Palette, Layers, HelpCircle, MessageCircle } from 'lucide-react';
+import { HeroActions, LineContactCard, FaqSection, AnnouncementBannerSection } from '@/components/HomeClientSections';
+import { Sparkles, ArrowRight, Images, Layers } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,17 +14,21 @@ export default async function HomePage() {
     // Ignore seed check note
   }
 
-  const albums = getAllAlbums();
+  const allAlbums = getAllAlbums();
+  // Highlight top 3 albums for homepage so the page stays fast and uncluttered
+  const featuredAlbums = allAlbums.slice(0, 3);
+  const announcements = getActiveAnnouncements();
+  const faqs = getAllFaqs();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090a0b] text-zinc-100 selection:bg-purple-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#060709] text-zinc-100 selection:bg-purple-500 selection:text-white">
       <Navbar />
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        <section className="relative overflow-hidden border-b border-white/[0.08] pt-20 pb-16 sm:pt-28 sm:pb-24">
+        <section className="relative overflow-hidden border-b border-white/[0.08] pt-20 pb-16 sm:pt-28 sm:pb-20">
           {/* Subtle gradient lights */}
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-gradient-to-tr from-purple-600/15 via-indigo-600/10 to-pink-600/10 filter blur-[100px] pointer-events-none" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-gradient-to-tr from-purple-600/20 via-indigo-600/15 to-pink-600/10 filter blur-[120px] pointer-events-none" />
 
           <div className="relative mx-auto max-w-7xl px-4 sm:px-8">
             <div className="max-w-3xl space-y-6">
@@ -34,11 +38,11 @@ export default async function HomePage() {
               </div>
 
               <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-[1.15]">
-                เปลี่ยนทุกไอเดียของคุณ เป็นภาพระดับ <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-200">Masterpiece</span> ด้วย AI
+                บริการรับสร้างภาพ AI สำหรับ <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-200">โปรไฟล์ บุคคล และแบรนด์</span>
               </h1>
 
               <p className="text-base sm:text-lg text-zinc-300 leading-relaxed font-light max-w-2xl">
-                บริการรับสร้างภาพ AI เชิงพาณิชย์ สำหรับโมเดลเสมือนจริง สินค้า โฆษณา และคอนเซ็ปต์อาร์ต คมชัดระดับ 4K – 8K ตรงตามบรีฟ เลือกดูสไตล์ภาพที่ต้องการด้านล่าง แล้วทัก LINE เพื่อเริ่มงานได้ทันที
+                สร้างสรรค์ภาพถ่ายโปรไฟล์โมเดลเสมือนจริง สินค้า โฆษณา และงานศิลป์สุดประณีต ตรงตามบรีฟของคุณ เลือกดูสไตล์ภาพที่ต้องการด้านล่าง แล้วทัก LINE เพื่อเริ่มงานได้ทันที
               </p>
 
               {/* Call-to-actions */}
@@ -47,93 +51,52 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 4 CORE ADVANTAGES (จุดเด่นทำไมต้องเรา) */}
-        <section className="border-b border-white/[0.08] bg-black/30 py-12">
-          <div className="mx-auto max-w-7xl px-4 sm:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-start gap-3.5 p-4 rounded-xl border border-white/[0.05] bg-zinc-950/40">
-                <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400 shrink-0">
-                  <Zap className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-serif text-sm font-semibold text-white">Ultra-HD 4K / 8K</h4>
-                  <p className="text-xs text-zinc-400 mt-1 font-light leading-relaxed">
-                    ระบบขยายความละเอียดขั้นสูง ภาพคมกริบ พร้อมใช้พิมพ์ป้าย บิลบอร์ด หรือลงโซเชียล
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3.5 p-4 rounded-xl border border-white/[0.05] bg-zinc-950/40">
-                <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
-                  <Palette className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-serif text-sm font-semibold text-white">Style Consistency</h4>
-                  <p className="text-xs text-zinc-400 mt-1 font-light leading-relaxed">
-                    คุมมูดแอนด์โทน ใบหน้าตัวละครเดิม และสไตล์เฉพาะแบรนด์ได้ตามบรีฟ 100%
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3.5 p-4 rounded-xl border border-white/[0.05] bg-zinc-950/40">
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-serif text-sm font-semibold text-white">Commercial Rights</h4>
-                  <p className="text-xs text-zinc-400 mt-1 font-light leading-relaxed">
-                    สิทธิ์ใช้งานเชิงพาณิชย์เต็มรูปแบบ นำไปยิงแอด ทำโฆษณา และสร้างยอดขายได้ทันที
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3.5 p-4 rounded-xl border border-white/[0.05] bg-zinc-950/40">
-                <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-serif text-sm font-semibold text-white">Fast Turnaround</h4>
-                  <p className="text-xs text-zinc-400 mt-1 font-light leading-relaxed">
-                    ส่งงานตัวอย่างรวดเร็วภายใน 24 – 48 ชม. ปรับแก้รายละเอียดได้จนกว่าจะตรงใจ
-                  </p>
-                </div>
-              </div>
+        {/* ANNOUNCEMENT & INFOGRAPHIC GUIDE SECTION (แทนแถบ 4 แถบเดิม) */}
+        {announcements.length > 0 && (
+          <section className="border-b border-white/[0.08] bg-black/40 py-12">
+            <div className="mx-auto max-w-7xl px-4 sm:px-8">
+              <AnnouncementBannerSection announcements={announcements} />
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* GALLERIES / STYLES SHOWCASE SECTION */}
+        {/* FEATURED 3 STYLES SECTION (คัดเลือกมา 3 อันล่าสุด เพื่อให้หน้าแรกกระชับ) */}
         <section id="styles" className="mx-auto max-w-7xl px-4 py-20 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-10 gap-4">
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-purple-400">
-                AI Visual Portfolio
+                Featured Styles
               </span>
               <h2 className="font-serif text-2xl sm:text-4xl font-normal text-white mt-1">
-                เลือกชมสไตล์ภาพที่ต้องการ
+                สไตล์ภาพตัวอย่างยอดนิยม
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400 mt-2 font-light max-w-xl">
-                คลิกเข้าชมแกลเลอรีแต่ละหมวดหมู่ สามารถแตะดูรูปขยายเต็มจอ และกดปุ่มหัวใจเพื่อบันทึกรูปตัวอย่างที่ชอบส่งมาให้เราทาง LINE ได้เลยครับ
+                ตัวอย่างหมวดหมู่ที่ได้รับความนิยม แตะเข้าไปดูรูปขยายใหญ่ และกดหัวใจบันทึกแบบที่ชอบส่งให้เราได้ครับ
               </p>
             </div>
 
-            <div className="font-mono text-xs text-zinc-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 self-start md:self-end">
-              {albums.length} Style Collections
-            </div>
+            <Link
+              href="/galleries"
+              className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-4 py-2 font-mono text-xs text-purple-300 transition-all self-start md:self-end"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>ดูแคตตาล็อกทั้งหมด ({allAlbums.length} สไตล์)</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {albums.map((album) => {
+            {featuredAlbums.map((album) => {
               const cover = album.coverImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';
 
               return (
                 <Link
                   key={album.id}
                   href={`/album/${album.slug}`}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-950/70 transition-all duration-300 hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-500/10"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-500/10"
                 >
                   {/* Cover Image Container */}
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-900">
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-950">
                     <Image
                       src={cover}
                       alt={album.title}
@@ -143,19 +106,12 @@ export default async function HomePage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
 
-                    {/* Photo count badge */}
                     <div className="absolute top-3.5 right-3.5">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-mono text-zinc-200 border border-white/15">
                         <Images className="h-3.5 w-3.5 text-purple-400" />
                         {album.photoCount || 0} ตัวอย่าง
                       </span>
                     </div>
-
-                    {album.clientName && (
-                      <div className="absolute bottom-3 left-4 text-xs font-mono text-purple-300/90 tracking-wide uppercase">
-                        {album.clientName}
-                      </div>
-                    )}
                   </div>
 
                   {/* Album Info */}
@@ -173,7 +129,7 @@ export default async function HomePage() {
 
                     <div className="flex items-center justify-between pt-4 border-t border-white/[0.06] text-xs font-mono text-zinc-300 group-hover:text-white transition-colors">
                       <span className="text-purple-400 font-semibold group-hover:underline">
-                        เข้าชมแกลเลอรีสไตล์นี้
+                        เข้าชมแกลเลอรีนี้
                       </span>
                       <ArrowRight className="h-4 w-4 transform transition-transform group-hover:translate-x-1" />
                     </div>
@@ -181,6 +137,18 @@ export default async function HomePage() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Large CTA button to view all collections */}
+          <div className="mt-12 text-center">
+            <Link
+              href="/galleries"
+              className="inline-flex items-center gap-2.5 rounded-full bg-white px-8 py-3.5 text-xs sm:text-sm font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200 transition-all shadow-xl hover:scale-105"
+            >
+              <Images className="h-4 w-4" />
+              <span>เข้าดูรวมแคตตาล็อกทั้งหมด ({allAlbums.length} อัลบั้ม)</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </section>
 
@@ -200,8 +168,7 @@ export default async function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-              {/* Step 1 */}
-              <div className="relative rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-8 space-y-4">
+              <div className="relative rounded-2xl glass-panel p-8 space-y-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 font-mono text-lg font-bold">
                   01
                 </div>
@@ -209,12 +176,11 @@ export default async function HomePage() {
                   เลือกสไตล์หรือส่งตัวอย่าง
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
-                  เลือกดูสไตล์จากเว็บนี้ หรือส่งภาพเรฟเฟอเรนซ์ที่คุณชื่นชอบ พร้อมบอกรายละเอียดคอนเซ็ปต์และขนาดภาพที่ต้องการ
+                  เลือกดูสไตล์จากเว็บนี้ หรือเตรียมรูปถ่ายของคุณตามคำแนะนำอินโฟกราฟิกด้านบน พร้อมบอกรายละเอียดที่ต้องการ
                 </p>
               </div>
 
-              {/* Step 2 */}
-              <div className="relative rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-8 space-y-4">
+              <div className="relative rounded-2xl glass-panel p-8 space-y-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-lg font-bold">
                   02
                 </div>
@@ -226,23 +192,22 @@ export default async function HomePage() {
                 </p>
               </div>
 
-              {/* Step 3 */}
-              <div className="relative rounded-2xl border border-white/[0.08] bg-zinc-900/40 p-8 space-y-4">
+              <div className="relative rounded-2xl glass-panel p-8 space-y-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-lg font-bold">
                   03
                 </div>
                 <h3 className="font-serif text-lg font-medium text-white">
-                  ตรวจรับงาน & รับไฟล์ 4K-8K
+                  ตรวจรับงาน
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
-                  รอรับภาพตัวอย่าง ตรวจเช็กและปรับแต่งรายละเอียด จากนั้นรับไฟล์คมชัดสูงสุด พร้อมสิทธิ์ใช้งานเชิงพาณิชย์
+                  รอรับภาพตัวอย่าง ตรวจเช็กและปรับแต่งรายละเอียด จากนั้นรับไฟล์พร้อมสิทธิ์ใช้งานเชิงพาณิชย์
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* FAQ SECTION */}
+        {/* FAQ SECTION (DYNAMIC FROM DB, EDITABLE IN ADMIN) */}
         <section id="faq" className="border-t border-white/[0.08] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-8">
             <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
@@ -257,7 +222,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <FaqSection />
+            <FaqSection faqs={faqs} />
           </div>
         </section>
 
@@ -281,7 +246,7 @@ export default async function HomePage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6">
-            <a href="#styles" className="hover:text-white transition-colors">สไตล์ภาพ</a>
+            <Link href="/galleries" className="hover:text-white transition-colors">รวมแคตตาล็อก</Link>
             <a href="#workflow" className="hover:text-white transition-colors">ขั้นตอนสั่งงาน</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
             <a href="https://line.me/ti/p/~tatchaihot" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">

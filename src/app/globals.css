@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #090a0b;
-  --foreground: #f4f4f5;
-  --card: #121316;
+  --background: #060709;
+  --foreground: #f4f4f6;
+  --card: #0d0f12;
   --card-border: rgba(255, 255, 255, 0.08);
-  --muted: #8e9199;
+  --muted: #8b8e96;
 }
 
 body {
@@ -13,6 +13,13 @@ body {
   color: var(--foreground);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(120, 80, 220, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 100% 30%, rgba(220, 60, 140, 0.06) 0%, transparent 35%),
+    radial-gradient(circle at 0% 70%, rgba(50, 160, 240, 0.06) 0%, transparent 35%),
+    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px;
+  background-attachment: fixed;
 }
 
 /* Custom smooth scrollbar */
@@ -22,16 +29,29 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #090a0b;
+  background: #060709;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #23252b;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #383b45;
+}
+
+/* Glassmorphism Luxury Cards */
+.glass-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+}
+
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 /* Content visibility optimization for ultra-fast mobile scrolling with 100+ images */
