@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Lock, Heart, Download, Share2, Check, Sparkles, Filter } from 'lucide-react';
+import { ArrowLeft, Lock, Heart, Download, Share2, Check, Sparkles, Filter, MessageCircle } from 'lucide-react';
 import ImageCard from '@/components/ImageCard';
 import Lightbox from '@/components/Lightbox';
 import { Album, Photo } from '@/lib/db';
@@ -143,6 +143,18 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
         </Link>
 
         <div className="flex items-center gap-2">
+          {/* Order this style via LINE */}
+          <a
+            href="https://line.me/ti/p/~tatchaihot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-3.5 py-1.5 font-mono text-xs text-white font-semibold shadow-md shadow-[#06C755]/20 hover:scale-105 transition-all"
+          >
+            <MessageCircle className="h-3.5 w-3.5 fill-current" />
+            <span className="hidden sm:inline">สั่งทำสไตล์นี้</span>
+            <span>(LINE)</span>
+          </a>
+
           {/* Share Button */}
           <button
             type="button"

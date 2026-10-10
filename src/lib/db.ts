@@ -174,7 +174,6 @@ export function updateAlbum(id: string, data: Partial<Album>): Album | null {
 }
 
 export function deleteAlbum(id: string): boolean {
-  // First fetch photos to clean up files if needed
   const photosStmt = db.prepare(`SELECT * FROM photos WHERE albumId = ?`);
   const photos = photosStmt.all(id) as Photo[];
 
@@ -232,7 +231,6 @@ export function createPhoto(data: {
     now
   );
 
-  // If album doesn't have a cover photo yet, set this one as cover
   const album = db.prepare(`SELECT coverImage FROM albums WHERE id = ?`).get(data.albumId) as { coverImage: string | null } | undefined;
   if (album && !album.coverImage) {
     db.prepare(`UPDATE albums SET coverImage = ? WHERE id = ?`).run(data.thumbUrl, data.albumId);
@@ -247,7 +245,6 @@ export function movePhotos(photoIds: string[], targetAlbumId: string): number {
   const stmt = db.prepare(`UPDATE photos SET albumId = ? WHERE id IN (${placeholders})`);
   const result = stmt.run(targetAlbumId, ...photoIds);
 
-  // Check target album cover
   const targetAlbum = db.prepare(`SELECT coverImage FROM albums WHERE id = ?`).get(targetAlbumId) as { coverImage: string | null } | undefined;
   if (targetAlbum && !targetAlbum.coverImage) {
     const firstPhoto = db.prepare(`SELECT thumbUrl FROM photos WHERE albumId = ? LIMIT 1`).get(targetAlbumId) as { thumbUrl: string } | undefined;
@@ -288,71 +285,62 @@ export function setAlbumCover(albumId: string, photoThumbUrl: string): boolean {
   return result.changes > 0;
 }
 
-// Initial Seeder for Demo Content
+// Initial Seeder for F-Secret AI Art Showcase Categories
 export function seedSampleData() {
   const count = db.prepare(`SELECT COUNT(*) as count FROM albums`).get() as { count: number };
   if (count.count > 0) return;
 
   const now = new Date().toISOString();
 
-  // Create Sample Album 1: Editorial & Fashion
-  const alb1Id = 'alb_sample_editorial';
+  // 1. Realistic AI Fashion & Portraits
+  const alb1Id = 'alb_ai_fashion';
   db.prepare(`
     INSERT INTO albums (id, title, slug, description, clientName, eventDate, coverImage, isPrivate, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
   `).run(
     alb1Id,
-    'Sartorial Elegance — Autumn / Winter',
-    'sartorial-elegance-aw',
-    'Haute couture editorial campaign captured with natural softbox illumination and minimalist styling.',
-    'Maison Studio Bangkok',
-    '2026-09-18',
-    'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80',
+    'Realistic AI Models & Fashion Portraits',
+    'realistic-ai-fashion-portraits',
+    'ภาพถ่ายโมเดลเสมือนคนจริง แฟชั่นนิตยสาร โฆษณาเสื้อผ้า และลุคสตูดิโอระดับไฮเอนด์ คมชัดทุกรายละเอียดผิวและเส้นผม',
+    'F-Secret Editorial Studio',
+    '2026-10-01',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
     now,
     now
   );
 
-  // Sample Photos for Album 1
   const photos1 = [
     {
-      id: 'pho_s1_1',
-      title: 'Vogue Light Study I',
-      url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=75',
-      width: 1200,
-      height: 1600,
-    },
-    {
-      id: 'pho_s1_2',
-      title: 'Minimalist Portrait',
+      id: 'pho_f1_1',
+      title: 'Studio Lighting Portrait Study',
       url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1600&q=85',
       thumb: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=75',
       width: 1200,
       height: 1500,
     },
     {
-      id: 'pho_s1_3',
-      title: 'Modern Architecture Silhouette',
+      id: 'pho_f1_2',
+      title: 'Haute Couture Silk Editorial',
+      url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=75',
+      width: 1200,
+      height: 1600,
+    },
+    {
+      id: 'pho_f1_3',
+      title: 'Monochrome Dramatic Shadow',
       url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=85',
       thumb: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=600&q=75',
       width: 1600,
       height: 1067,
     },
     {
-      id: 'pho_s1_4',
-      title: 'Monochrome Texture',
+      id: 'pho_f1_4',
+      title: 'Urban Streetwear Concept',
       url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=85',
       thumb: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=75',
       width: 1200,
       height: 1600,
-    },
-    {
-      id: 'pho_s1_5',
-      title: 'Studio Shadows',
-      url: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=600&q=75',
-      width: 1600,
-      height: 1067,
     }
   ];
 
@@ -371,50 +359,50 @@ export function seedSampleData() {
       'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWUxZTFlIi8+PC9zdmc+',
       p.width,
       p.height,
-      450000,
+      500000,
       now
     );
   }
 
-  // Create Sample Album 2: Architectural Spaces
-  const alb2Id = 'alb_sample_architecture';
+  // 2. Commercial Product & Packaging
+  const alb2Id = 'alb_ai_product';
   db.prepare(`
     INSERT INTO albums (id, title, slug, description, clientName, eventDate, coverImage, isPrivate, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
   `).run(
     alb2Id,
-    'Brutalist Sanctuary & Light',
-    'brutalist-sanctuary',
-    'Geometric form and architectural stillness exploring concrete textures and shadows.',
-    'Forma Architecture Lab',
-    '2026-09-25',
-    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    'Commercial Product & Ad Creatives',
+    'commercial-product-ad-creatives',
+    'ภาพโฆษณาสินค้า บรรจุภัณฑ์ และฉากหลังพรีเมียม สไตล์ 3D Luxury และสตูดิโอจัดแสง สำหรับยิงแอดและการตลาดออนไลน์',
+    'Brand Marketing Showcase',
+    '2026-10-05',
+    'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80',
     now,
     now
   );
 
   const photos2 = [
     {
-      id: 'pho_s2_1',
-      title: 'Minimalist Interior Vista',
-      url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=75',
+      id: 'pho_p2_1',
+      title: 'Luxury Perfume & Water Droplets',
+      url: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=600&q=75',
+      width: 1200,
+      height: 1600,
+    },
+    {
+      id: 'pho_p2_2',
+      title: 'Cosmetics Podium & Botanicals',
+      url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=75',
       width: 1600,
       height: 1067,
     },
     {
-      id: 'pho_s2_2',
-      title: 'Concrete Symmetry',
-      url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=600&q=75',
-      width: 1600,
-      height: 1067,
-    },
-    {
-      id: 'pho_s2_3',
-      title: 'Monolith Window Light',
-      url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=85',
-      thumb: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=75',
+      id: 'pho_p2_3',
+      title: 'Organic Skincare Light & Shadow',
+      url: 'https://images.unsplash.com/photo-1608248597359-00913f631484?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1608248597359-00913f631484?auto=format&fit=crop&w=600&q=75',
       width: 1200,
       height: 1600,
     }
@@ -432,10 +420,74 @@ export function seedSampleData() {
       p.url,
       p.url,
       p.thumb,
-      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWEyMDI2Ii8+PC9zdmc+',
+      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWYyMzIwIi8+PC9zdmc+',
       p.width,
       p.height,
-      520000,
+      480000,
+      now
+    );
+  }
+
+  // 3. Cinematic Fantasy & Sci-Fi Concept Art
+  const alb3Id = 'alb_ai_cinematic';
+  db.prepare(`
+    INSERT INTO albums (id, title, slug, description, clientName, eventDate, coverImage, isPrivate, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+  `).run(
+    alb3Id,
+    'Cinematic Sci-Fi & Cyberpunk Concept Art',
+    'cinematic-scifi-cyberpunk-art',
+    'งานภาพยนตร์ โลกอนาคต ไซไฟ นีออน สเปเชียลเอฟเฟกต์ และคอนเซ็ปต์อาร์ตระดับ AAA สำหรับงานเกม นิยาย และมีเดียโปรดักชัน',
+    'F-Secret World Building',
+    '2026-10-08',
+    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
+    now,
+    now
+  );
+
+  const photos3 = [
+    {
+      id: 'pho_c3_1',
+      title: 'Neon Megacity Vista',
+      url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=75',
+      width: 1600,
+      height: 1067,
+    },
+    {
+      id: 'pho_c3_2',
+      title: 'Cyber Samurai in the Rain',
+      url: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=75',
+      width: 1200,
+      height: 1600,
+    },
+    {
+      id: 'pho_c3_3',
+      title: 'Futuristic Horizon & Space Exploration',
+      url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=85',
+      thumb: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=75',
+      width: 1600,
+      height: 1067,
+    }
+  ];
+
+  for (const p of photos3) {
+    db.prepare(`
+      INSERT INTO photos (id, albumId, originalName, filename, originalUrl, previewUrl, thumbUrl, blurDataUrl, width, height, fileSize, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      p.id,
+      alb3Id,
+      p.title + '.jpg',
+      p.id + '.jpg',
+      p.url,
+      p.url,
+      p.thumb,
+      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMCAxMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMWEyMDM1Ii8+PC9zdmc+',
+      p.width,
+      p.height,
+      540000,
       now
     );
   }

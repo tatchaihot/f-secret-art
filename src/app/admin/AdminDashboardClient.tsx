@@ -381,14 +381,14 @@ export default function AdminDashboardClient({ initialAlbums }: AdminDashboardCl
       <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-black/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white font-mono text-xs font-bold border border-white/15">
-              LA
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-purple-300 font-mono text-xs font-bold border border-white/15">
+              FS
             </div>
             <div>
               <span className="font-serif text-sm font-semibold tracking-wide text-white uppercase">
-                Lumen Atelier
+                F-Secret AI Art
               </span>
-              <span className="ml-2 rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+              <span className="ml-2 rounded bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono text-purple-300">
                 Admin Mode
               </span>
             </div>
