@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function GalleriesPage() {
-  const albums = getAllAlbums();
+  const albums = await getAllAlbums();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#060709] text-zinc-100">

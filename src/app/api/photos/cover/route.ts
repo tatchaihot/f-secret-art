@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const ok = setAlbumCover(albumId, photoThumbUrl);
+    const ok = await setAlbumCover(albumId, photoThumbUrl);
     return NextResponse.json({ success: ok });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

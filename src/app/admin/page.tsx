@@ -19,14 +19,14 @@ export default async function AdminPage() {
   }
 
   try {
-    seedSampleData();
+    await seedSampleData();
   } catch (e) {
     // Ignore seed check error
   }
 
-  const albums = getAllAlbums();
-  const announcements = getAllAnnouncements();
-  const faqs = getAllFaqs();
+  const albums = await getAllAlbums();
+  const announcements = await getAllAnnouncements();
+  const faqs = await getAllFaqs();
 
   return (
     <AdminDashboardClient

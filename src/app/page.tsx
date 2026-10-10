@@ -9,15 +9,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   try {
-    seedSampleData();
+    await seedSampleData();
   } catch (e) {
     // Ignore seed check note
   }
 
-  const allAlbums = getAllAlbums();
+  const allAlbums = await getAllAlbums();
   const featuredAlbums = allAlbums.slice(0, 3);
-  const announcements = getActiveAnnouncements();
-  const faqs = getAllFaqs();
+  const announcements = await getActiveAnnouncements();
+  const faqs = await getAllFaqs();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#060709] text-zinc-100 selection:bg-purple-500 selection:text-white">

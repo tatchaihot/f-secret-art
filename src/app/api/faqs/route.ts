@@ -4,7 +4,7 @@ import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function GET() {
   try {
-    const faqs = getAllFaqs();
+    const faqs = await getAllFaqs();
     return NextResponse.json({ success: true, faqs });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Question and answer are required' }, { status: 400 });
     }
 
-    const faq = createFaq({
+    const faq = await createFaq({
       question: body.question.trim(),
       answer: body.answer.trim(),
       sortOrder: Number(body.sortOrder) || 0,
@@ -43,7 +43,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }
 
-    const updated = updateFaq(body.id, {
+    const updated = await updateFaq(body.id, {
       question: body.question?.trim(),
       answer: body.answer?.trim(),
       sortOrder: Number(body.sortOrder) || 0,
@@ -65,7 +65,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }
 
-    const ok = deleteFaq(id);
+    const ok = await deleteFaq(id);
     return NextResponse.json({ success: ok });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

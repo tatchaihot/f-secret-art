@@ -1,112 +1,12 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { createClient, Client } from '@libsql/client';
 
-const dbPath = path.join(process.cwd(), 'data', 'gallery.db');
-const dbDir = path.dirname(dbPath);
+const url = process.env.TURSO_DATABASE_URL || 'file:data/gallery.db';
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
-
-export const db = new Database(dbPath);
-
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-// Initialize schema
-db.exec(`
-  CREATE TABLE IF NOT EXISTS albums (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    description TEXT,
-    clientName TEXT,
-    eventDate TEXT,
-    coverImage TEXT,
-    isPrivate INTEGER DEFAULT 0,
-    passcode TEXT,
-    sortOrder INTEGER DEFAULT 0,
-    createdAt TEXT NOT NULL,
-    updatedAt TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS photos (
-    id TEXT PRIMARY KEY,
-    albumId TEXT NOT NULL,
-    originalName TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    originalUrl TEXT NOT NULL,
-    previewUrl TEXT NOT NULL,
-    thumbUrl TEXT NOT NULL,
-    blurDataUrl TEXT NOT NULL,
-    width INTEGER NOT NULL,
-    height INTEGER NOT NULL,
-    fileSize INTEGER NOT NULL,
-    sortOrder INTEGER DEFAULT 0,
-    createdAt TEXT NOT NULL,
-    FOREIGN KEY (albumId) REFERENCES albums(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS announcements (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    content TEXT,
-    imageUrl TEXT,
-    linkUrl TEXT,
-    isActive INTEGER DEFAULT 1,
-    sortOrder INTEGER DEFAULT 0,
-    createdAt TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS faqs (
-    id TEXT PRIMARY KEY,
-    question TEXT NOT NULL,
-    answer TEXT NOT NULL,
-    sortOrder INTEGER DEFAULT 0,
-    createdAt TEXT NOT NULL
-  );
-`);
-
-// Safe migration for sortOrder in albums
-try {
-  db.exec(`ALTER TABLE albums ADD COLUMN sortOrder INTEGER DEFAULT 0;`);
-} catch {
-  // column already exists
-}
-
-// Safe migration for content in announcements
-try {
-  db.exec(`ALTER TABLE announcements ADD COLUMN content TEXT;`);
-} catch {
-  // column already exists
-}
-
-// Safe migration to make announcements.imageUrl nullable
-try {
-  const annInfo = db.prepare('PRAGMA table_info(announcements)').all() as Array<{ name: string; notnull: number }>;
-  const imgCol = annInfo.find((c) => c.name === 'imageUrl');
-  if (imgCol && imgCol.notnull === 1) {
-    db.exec(`
-      CREATE TABLE announcements_temp (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT,
-        imageUrl TEXT,
-        linkUrl TEXT,
-        isActive INTEGER DEFAULT 1,
-        sortOrder INTEGER DEFAULT 0,
-        createdAt TEXT NOT NULL
-      );
-      INSERT INTO announcements_temp (id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt)
-      SELECT id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt FROM announcements;
-      DROP TABLE announcements;
-      ALTER TABLE announcements_temp RENAME TO announcements;
-    `);
-  }
-} catch {
-  // ignore migration error
-}
+export const db: Client = createClient({
+  url,
+  authToken,
+});
 
 export interface Album {
   id: string;
@@ -159,69 +59,162 @@ export interface FaqItem {
   createdAt: string;
 }
 
+let isInitialized = false;
+
+export async function ensureDbInitialized() {
+  if (isInitialized) return;
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS albums (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      description TEXT,
+      clientName TEXT,
+      eventDate TEXT,
+      coverImage TEXT,
+      isPrivate INTEGER DEFAULT 0,
+      passcode TEXT,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS photos (
+      id TEXT PRIMARY KEY,
+      albumId TEXT NOT NULL,
+      originalName TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      originalUrl TEXT NOT NULL,
+      previewUrl TEXT NOT NULL,
+      thumbUrl TEXT NOT NULL,
+      blurDataUrl TEXT NOT NULL,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      fileSize INTEGER NOT NULL,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (albumId) REFERENCES albums(id) ON DELETE CASCADE
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT,
+      imageUrl TEXT,
+      linkUrl TEXT,
+      isActive INTEGER DEFAULT 1,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS faqs (
+      id TEXT PRIMARY KEY,
+      question TEXT NOT NULL,
+      answer TEXT NOT NULL,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL
+    );
+  `);
+
+  isInitialized = true;
+}
+
 // ----------------- ALBUM QUERIES -----------------
-export function getAllAlbums(): Album[] {
-  const stmt = db.prepare(`
+export async function getAllAlbums(): Promise<Album[]> {
+  await ensureDbInitialized();
+  const res = await db.execute(`
     SELECT a.*, COUNT(p.id) as photoCount
     FROM albums a
     LEFT JOIN photos p ON a.id = p.albumId
     GROUP BY a.id
     ORDER BY a.sortOrder ASC, a.createdAt DESC
   `);
-  return stmt.all() as Album[];
+  return res.rows as unknown as Album[];
 }
 
-export function getAlbumBySlug(slug: string): (Album & { photos: Photo[] }) | null {
-  const albumStmt = db.prepare(`SELECT * FROM albums WHERE slug = ?`);
-  const album = albumStmt.get(slug) as Album | undefined;
-  if (!album) return null;
+export async function getAlbumBySlug(slug: string): Promise<(Album & { photos: Photo[] }) | null> {
+  await ensureDbInitialized();
+  const albumRes = await db.execute({
+    sql: 'SELECT * FROM albums WHERE slug = ?',
+    args: [slug],
+  });
 
-  const photosStmt = db.prepare(`SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC`);
-  const photos = photosStmt.all(album.id) as Photo[];
+  if (albumRes.rows.length === 0) return null;
+  const album = albumRes.rows[0] as unknown as Album;
 
+  const photosRes = await db.execute({
+    sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
+    args: [album.id],
+  });
+
+  const photos = photosRes.rows as unknown as Photo[];
   return { ...album, photos };
 }
 
-export function getAlbumById(id: string): (Album & { photos: Photo[] }) | null {
-  const albumStmt = db.prepare(`SELECT * FROM albums WHERE id = ?`);
-  const album = albumStmt.get(id) as Album | undefined;
-  if (!album) return null;
+export async function getAlbumById(id: string): Promise<(Album & { photos: Photo[] }) | null> {
+  await ensureDbInitialized();
+  const albumRes = await db.execute({
+    sql: 'SELECT * FROM albums WHERE id = ?',
+    args: [id],
+  });
 
-  const photosStmt = db.prepare(`SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC`);
-  const photos = photosStmt.all(id) as Photo[];
+  if (albumRes.rows.length === 0) return null;
+  const album = albumRes.rows[0] as unknown as Album;
 
+  const photosRes = await db.execute({
+    sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
+    args: [id],
+  });
+
+  const photos = photosRes.rows as unknown as Photo[];
   return { ...album, photos };
 }
 
-export function createAlbum(data: {
+export async function createAlbum(data: {
   title: string;
   slug?: string;
   description?: string;
   sortOrder?: number;
-}): Album {
+}): Promise<Album> {
+  await ensureDbInitialized();
   const id = 'alb_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
   const now = new Date().toISOString();
-  const slug = (data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')) + '-' + Math.random().toString(36).substring(2, 6);
+  const slug =
+    (data.slug ||
+      data.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '')) +
+    '-' +
+    Math.random().toString(36).substring(2, 6);
 
-  const stmt = db.prepare(`
-    INSERT INTO albums (id, title, slug, description, sortOrder, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
+  await db.execute({
+    sql: `INSERT INTO albums (id, title, slug, description, sortOrder, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.title,
+      slug,
+      data.description || null,
+      data.sortOrder ?? 0,
+      now,
+      now,
+    ],
+  });
 
-  stmt.run(
-    id,
-    data.title,
-    slug,
-    data.description || null,
-    data.sortOrder ?? 0,
-    now,
-    now
-  );
-
-  return getAlbumById(id)!;
+  const created = await getAlbumById(id);
+  return created!;
 }
 
-export function updateAlbum(id: string, data: Partial<Album>): Album | null {
+export async function updateAlbum(id: string, data: Partial<Album>): Promise<Album | null> {
+  await ensureDbInitialized();
   const now = new Date().toISOString();
   const fields: string[] = [];
   const values: any[] = [];
@@ -236,40 +229,29 @@ export function updateAlbum(id: string, data: Partial<Album>): Album | null {
 
   if (fields.length === 0) return getAlbumById(id);
 
-  fields.push(`updatedAt = ?`);
+  fields.push('updatedAt = ?');
   values.push(now);
   values.push(id);
 
-  const stmt = db.prepare(`UPDATE albums SET ${fields.join(', ')} WHERE id = ?`);
-  stmt.run(...values);
+  await db.execute({
+    sql: `UPDATE albums SET ${fields.join(', ')} WHERE id = ?`,
+    args: values,
+  });
 
   return getAlbumById(id);
 }
 
-export function deleteAlbum(id: string): boolean {
-  const photosStmt = db.prepare(`SELECT * FROM photos WHERE albumId = ?`);
-  const photos = photosStmt.all(id) as Photo[];
-
-  for (const photo of photos) {
-    try {
-      const origPath = path.join(process.cwd(), 'public', photo.originalUrl);
-      const prevPath = path.join(process.cwd(), 'public', photo.previewUrl);
-      const thumbPath = path.join(process.cwd(), 'public', photo.thumbUrl);
-      if (fs.existsSync(origPath)) fs.unlinkSync(origPath);
-      if (fs.existsSync(prevPath)) fs.unlinkSync(prevPath);
-      if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-    } catch {
-      // Ignore file unlink error
-    }
-  }
-
-  const stmt = db.prepare(`DELETE FROM albums WHERE id = ?`);
-  const result = stmt.run(id);
-  return result.changes > 0;
+export async function deleteAlbum(id: string): Promise<boolean> {
+  await ensureDbInitialized();
+  const res = await db.execute({
+    sql: 'DELETE FROM albums WHERE id = ?',
+    args: [id],
+  });
+  return res.rowsAffected > 0;
 }
 
 // ----------------- PHOTO QUERIES -----------------
-export function createPhoto(data: {
+export async function createPhoto(data: {
   albumId: string;
   originalName: string;
   filename: string;
@@ -280,126 +262,168 @@ export function createPhoto(data: {
   width: number;
   height: number;
   fileSize: number;
-}): Photo {
+}): Promise<Photo> {
+  await ensureDbInitialized();
   const id = 'pho_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
   const now = new Date().toISOString();
 
-  const stmt = db.prepare(`
-    INSERT INTO photos (id, albumId, originalName, filename, originalUrl, previewUrl, thumbUrl, blurDataUrl, width, height, fileSize, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  await db.execute({
+    sql: `INSERT INTO photos (id, albumId, originalName, filename, originalUrl, previewUrl, thumbUrl, blurDataUrl, width, height, fileSize, createdAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.albumId,
+      data.originalName,
+      data.filename,
+      data.originalUrl,
+      data.previewUrl,
+      data.thumbUrl,
+      data.blurDataUrl,
+      data.width,
+      data.height,
+      data.fileSize,
+      now,
+    ],
+  });
 
-  stmt.run(
-    id,
-    data.albumId,
-    data.originalName,
-    data.filename,
-    data.originalUrl,
-    data.previewUrl,
-    data.thumbUrl,
-    data.blurDataUrl,
-    data.width,
-    data.height,
-    data.fileSize,
-    now
-  );
-
-  const album = db.prepare(`SELECT coverImage FROM albums WHERE id = ?`).get(data.albumId) as { coverImage: string | null } | undefined;
+  // If album has no cover image yet, set it to this photo's thumbUrl
+  const albumRes = await db.execute({
+    sql: 'SELECT coverImage FROM albums WHERE id = ?',
+    args: [data.albumId],
+  });
+  const album = albumRes.rows[0];
   if (album && !album.coverImage) {
-    db.prepare(`UPDATE albums SET coverImage = ? WHERE id = ?`).run(data.thumbUrl, data.albumId);
+    await db.execute({
+      sql: 'UPDATE albums SET coverImage = ? WHERE id = ?',
+      args: [data.thumbUrl, data.albumId],
+    });
   }
 
-  return db.prepare(`SELECT * FROM photos WHERE id = ?`).get(id) as Photo;
+  const photoRes = await db.execute({
+    sql: 'SELECT * FROM photos WHERE id = ?',
+    args: [id],
+  });
+  return photoRes.rows[0] as unknown as Photo;
 }
 
-export function movePhotos(photoIds: string[], targetAlbumId: string): number {
+export async function movePhotos(photoIds: string[], targetAlbumId: string): Promise<number> {
   if (!photoIds.length) return 0;
+  await ensureDbInitialized();
   const placeholders = photoIds.map(() => '?').join(',');
-  const stmt = db.prepare(`UPDATE photos SET albumId = ? WHERE id IN (${placeholders})`);
-  const result = stmt.run(targetAlbumId, ...photoIds);
+  const res = await db.execute({
+    sql: `UPDATE photos SET albumId = ? WHERE id IN (${placeholders})`,
+    args: [targetAlbumId, ...photoIds],
+  });
 
-  const targetAlbum = db.prepare(`SELECT coverImage FROM albums WHERE id = ?`).get(targetAlbumId) as { coverImage: string | null } | undefined;
+  // Ensure target album has cover if none
+  const targetAlbumRes = await db.execute({
+    sql: 'SELECT coverImage FROM albums WHERE id = ?',
+    args: [targetAlbumId],
+  });
+  const targetAlbum = targetAlbumRes.rows[0];
   if (targetAlbum && !targetAlbum.coverImage) {
-    const firstPhoto = db.prepare(`SELECT thumbUrl FROM photos WHERE albumId = ? LIMIT 1`).get(targetAlbumId) as { thumbUrl: string } | undefined;
-    if (firstPhoto) {
-      db.prepare(`UPDATE albums SET coverImage = ? WHERE id = ?`).run(firstPhoto.thumbUrl, targetAlbumId);
+    const firstPhoto = await db.execute({
+      sql: 'SELECT thumbUrl FROM photos WHERE albumId = ? LIMIT 1',
+      args: [targetAlbumId],
+    });
+    if (firstPhoto.rows.length > 0) {
+      await db.execute({
+        sql: 'UPDATE albums SET coverImage = ? WHERE id = ?',
+        args: [firstPhoto.rows[0].thumbUrl, targetAlbumId],
+      });
     }
   }
 
-  return result.changes;
+  return res.rowsAffected;
 }
 
-export function deletePhotos(photoIds: string[]): number {
-  if (!photoIds.length) return 0;
+export async function getPhotosByIds(photoIds: string[]): Promise<Array<{ filename: string; originalUrl: string }>> {
+  if (!photoIds.length) return [];
+  await ensureDbInitialized();
   const placeholders = photoIds.map(() => '?').join(',');
-  const photos = db.prepare(`SELECT * FROM photos WHERE id IN (${placeholders})`).all(...photoIds) as Photo[];
-
-  for (const photo of photos) {
-    try {
-      const origPath = path.join(process.cwd(), 'public', photo.originalUrl);
-      const prevPath = path.join(process.cwd(), 'public', photo.previewUrl);
-      const thumbPath = path.join(process.cwd(), 'public', photo.thumbUrl);
-      if (fs.existsSync(origPath)) fs.unlinkSync(origPath);
-      if (fs.existsSync(prevPath)) fs.unlinkSync(prevPath);
-      if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-    } catch {
-      // Ignore cleanup error
-    }
-  }
-
-  const stmt = db.prepare(`DELETE FROM photos WHERE id IN (${placeholders})`);
-  const result = stmt.run(...photoIds);
-  return result.changes;
+  const res = await db.execute({
+    sql: `SELECT filename, originalUrl FROM photos WHERE id IN (${placeholders})`,
+    args: photoIds,
+  });
+  return res.rows as unknown as Array<{ filename: string; originalUrl: string }>;
 }
 
-export function setAlbumCover(albumId: string, photoThumbUrl: string): boolean {
-  const stmt = db.prepare(`UPDATE albums SET coverImage = ? WHERE id = ?`);
-  const result = stmt.run(photoThumbUrl, albumId);
-  return result.changes > 0;
+export async function deletePhotos(photoIds: string[]): Promise<number> {
+  if (!photoIds.length) return 0;
+  await ensureDbInitialized();
+  const placeholders = photoIds.map(() => '?').join(',');
+  const res = await db.execute({
+    sql: `DELETE FROM photos WHERE id IN (${placeholders})`,
+    args: photoIds,
+  });
+  return res.rowsAffected;
+}
+
+export async function setAlbumCover(albumId: string, photoThumbUrl: string): Promise<boolean> {
+  await ensureDbInitialized();
+  const res = await db.execute({
+    sql: 'UPDATE albums SET coverImage = ? WHERE id = ?',
+    args: [photoThumbUrl, albumId],
+  });
+  return res.rowsAffected > 0;
 }
 
 // ----------------- ANNOUNCEMENT QUERIES -----------------
-export function getAllAnnouncements(): Announcement[] {
-  const stmt = db.prepare(`SELECT * FROM announcements ORDER BY sortOrder ASC, createdAt DESC`);
-  return stmt.all() as Announcement[];
+export async function getAllAnnouncements(): Promise<Announcement[]> {
+  await ensureDbInitialized();
+  const res = await db.execute('SELECT * FROM announcements ORDER BY sortOrder ASC, createdAt DESC');
+  return res.rows as unknown as Announcement[];
 }
 
-export function getActiveAnnouncements(): Announcement[] {
-  const stmt = db.prepare(`SELECT * FROM announcements WHERE isActive = 1 ORDER BY sortOrder ASC, createdAt DESC`);
-  return stmt.all() as Announcement[];
+export async function getActiveAnnouncements(): Promise<Announcement[]> {
+  await ensureDbInitialized();
+  const res = await db.execute('SELECT * FROM announcements WHERE isActive = 1 ORDER BY sortOrder ASC, createdAt DESC');
+  return res.rows as unknown as Announcement[];
 }
 
-export function createAnnouncement(data: {
+export async function getAnnouncementById(id: string): Promise<Announcement | null> {
+  await ensureDbInitialized();
+  const res = await db.execute({
+    sql: 'SELECT * FROM announcements WHERE id = ?',
+    args: [id],
+  });
+  if (res.rows.length === 0) return null;
+  return res.rows[0] as unknown as Announcement;
+}
+
+export async function createAnnouncement(data: {
   title: string;
   content?: string;
   imageUrl?: string;
   linkUrl?: string;
   isActive?: boolean;
   sortOrder?: number;
-}): Announcement {
+}): Promise<Announcement> {
+  await ensureDbInitialized();
   const id = 'ann_' + Math.random().toString(36).substring(2, 9);
   const now = new Date().toISOString();
 
-  const stmt = db.prepare(`
-    INSERT INTO announcements (id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  await db.execute({
+    sql: `INSERT INTO announcements (id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.title,
+      data.content || null,
+      data.imageUrl || null,
+      data.linkUrl || null,
+      data.isActive !== false ? 1 : 0,
+      data.sortOrder ?? 0,
+      now,
+    ],
+  });
 
-  stmt.run(
-    id,
-    data.title,
-    data.content || null,
-    data.imageUrl || null,
-    data.linkUrl || null,
-    data.isActive !== false ? 1 : 0,
-    data.sortOrder ?? 0,
-    now
-  );
-
-  return db.prepare(`SELECT * FROM announcements WHERE id = ?`).get(id) as Announcement;
+  const created = await getAnnouncementById(id);
+  return created!;
 }
 
-export function updateAnnouncement(id: string, data: Partial<Announcement>): Announcement | null {
+export async function updateAnnouncement(id: string, data: Partial<Announcement>): Promise<Announcement | null> {
+  await ensureDbInitialized();
   const fields: string[] = [];
   const values: any[] = [];
 
@@ -411,50 +435,69 @@ export function updateAnnouncement(id: string, data: Partial<Announcement>): Ann
     }
   }
 
-  if (fields.length === 0) return null;
+  if (fields.length === 0) return getAnnouncementById(id);
 
   values.push(id);
-  db.prepare(`UPDATE announcements SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-  return db.prepare(`SELECT * FROM announcements WHERE id = ?`).get(id) as Announcement;
+  await db.execute({
+    sql: `UPDATE announcements SET ${fields.join(', ')} WHERE id = ?`,
+    args: values,
+  });
+  return getAnnouncementById(id);
 }
 
-export function deleteAnnouncement(id: string): boolean {
-  const stmt = db.prepare(`DELETE FROM announcements WHERE id = ?`);
-  const result = stmt.run(id);
-  return result.changes > 0;
+export async function deleteAnnouncement(id: string): Promise<boolean> {
+  await ensureDbInitialized();
+  const res = await db.execute({
+    sql: 'DELETE FROM announcements WHERE id = ?',
+    args: [id],
+  });
+  return res.rowsAffected > 0;
 }
 
 // ----------------- FAQ QUERIES -----------------
-export function getAllFaqs(): FaqItem[] {
-  const stmt = db.prepare(`SELECT * FROM faqs ORDER BY sortOrder ASC, createdAt ASC`);
-  return stmt.all() as FaqItem[];
+export async function getAllFaqs(): Promise<FaqItem[]> {
+  await ensureDbInitialized();
+  const res = await db.execute('SELECT * FROM faqs ORDER BY sortOrder ASC, createdAt ASC');
+  return res.rows as unknown as FaqItem[];
 }
 
-export function createFaq(data: {
+export async function getFaqById(id: string): Promise<FaqItem | null> {
+  await ensureDbInitialized();
+  const res = await db.execute({
+    sql: 'SELECT * FROM faqs WHERE id = ?',
+    args: [id],
+  });
+  if (res.rows.length === 0) return null;
+  return res.rows[0] as unknown as FaqItem;
+}
+
+export async function createFaq(data: {
   question: string;
   answer: string;
   sortOrder?: number;
-}): FaqItem {
+}): Promise<FaqItem> {
+  await ensureDbInitialized();
   const id = 'faq_' + Math.random().toString(36).substring(2, 9);
   const now = new Date().toISOString();
 
-  const stmt = db.prepare(`
-    INSERT INTO faqs (id, question, answer, sortOrder, createdAt)
-    VALUES (?, ?, ?, ?, ?)
-  `);
+  await db.execute({
+    sql: `INSERT INTO faqs (id, question, answer, sortOrder, createdAt)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      data.question,
+      data.answer,
+      data.sortOrder ?? 0,
+      now,
+    ],
+  });
 
-  stmt.run(
-    id,
-    data.question,
-    data.answer,
-    data.sortOrder ?? 0,
-    now
-  );
-
-  return db.prepare(`SELECT * FROM faqs WHERE id = ?`).get(id) as FaqItem;
+  const created = await getFaqById(id);
+  return created!;
 }
 
-export function updateFaq(id: string, data: Partial<FaqItem>): FaqItem | null {
+export async function updateFaq(id: string, data: Partial<FaqItem>): Promise<FaqItem | null> {
+  await ensureDbInitialized();
   const fields: string[] = [];
   const values: any[] = [];
 
@@ -466,49 +509,59 @@ export function updateFaq(id: string, data: Partial<FaqItem>): FaqItem | null {
     }
   }
 
-  if (fields.length === 0) return null;
+  if (fields.length === 0) return getFaqById(id);
 
   values.push(id);
-  db.prepare(`UPDATE faqs SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-  return db.prepare(`SELECT * FROM faqs WHERE id = ?`).get(id) as FaqItem;
+  await db.execute({
+    sql: `UPDATE faqs SET ${fields.join(', ')} WHERE id = ?`,
+    args: values,
+  });
+  return getFaqById(id);
 }
 
-export function deleteFaq(id: string): boolean {
-  const stmt = db.prepare(`DELETE FROM faqs WHERE id = ?`);
-  const result = stmt.run(id);
-  return result.changes > 0;
+export async function deleteFaq(id: string): Promise<boolean> {
+  await ensureDbInitialized();
+  const res = await db.execute({
+    sql: 'DELETE FROM faqs WHERE id = ?',
+    args: [id],
+  });
+  return res.rowsAffected > 0;
 }
 
 // ----------------- SEED DATA -----------------
-export function seedSampleData() {
-  const albumCount = db.prepare(`SELECT COUNT(*) as count FROM albums`).get() as { count: number };
-  const faqCount = db.prepare(`SELECT COUNT(*) as count FROM faqs`).get() as { count: number };
-  const annCount = db.prepare(`SELECT COUNT(*) as count FROM announcements`).get() as { count: number };
+export async function seedSampleData() {
+  await ensureDbInitialized();
+  const albumRes = await db.execute('SELECT COUNT(*) as count FROM albums');
+  const faqRes = await db.execute('SELECT COUNT(*) as count FROM faqs');
+  const annRes = await db.execute('SELECT COUNT(*) as count FROM announcements');
 
-  const now = new Date().toISOString();
+  const albumCount = Number(albumRes.rows[0].count) || 0;
+  const faqCount = Number(faqRes.rows[0].count) || 0;
+  const annCount = Number(annRes.rows[0].count) || 0;
 
-  // Seed Announcements / News
-  if (annCount.count === 0) {
-    createAnnouncement({
+  if (annCount === 0) {
+    await createAnnouncement({
       title: 'ยินดีต้อนรับสู่ F-Secret AI Art · สตูดิโอสร้างสรรค์ภาพ AI ระดับพรีเมียม',
-      content: 'เปิดรับคิวงานสร้างสรรค์ภาพ AI สำหรับโปรไฟล์ธุรกิจ โมเดลเสมือนจริง และภาพสินค้าโฆษณา สอบถามคิวงานหรือส่งบรีฟตัวอย่างทัก LINE ID: tatchaihot ได้ตลอด 24 ชม. ครับ',
+      content:
+        'เปิดรับคิวงานสร้างสรรค์ภาพ AI สำหรับโปรไฟล์ธุรกิจ โมเดลเสมือนจริง และภาพสินค้าโฆษณา สอบถามคิวงานหรือส่งบรีฟตัวอย่างทัก LINE ID: tatchaihot ได้ตลอด 24 ชม. ครับ',
       linkUrl: 'https://line.me/ti/p/~tatchaihot',
       isActive: true,
       sortOrder: 1,
     });
   }
 
-  // Seed FAQs (Editable by Admin, NO 4k-8k mentions)
-  if (faqCount.count === 0) {
+  if (faqCount === 0) {
     const defaultFaqs = [
       {
         question: 'สั่งทำภาพ AI โปรไฟล์ ต้องเตรียมรูปถ่ายอย่างไร?',
-        answer: 'เตรียมรูปถ่ายหน้าตรง หันซ้าย-ขวา ครึ่งตัว และเต็มตัว รวม 4–6 รูปที่ใบหน้าชัดเจน แสงสว่างพอดี ไม่มีฟิลเตอร์หนา และไม่มีคนอื่นในภาพ (สามารถดูตัวอย่างจากภาพอินโฟกราฟิกด้านบนได้เลยครับ)',
+        answer:
+          'เตรียมรูปถ่ายหน้าตรง หันซ้าย-ขวา ครึ่งตัว และเต็มตัว รวม 4–6 รูปที่ใบหน้าชัดเจน แสงสว่างพอดี ไม่มีฟิลเตอร์หนา และไม่มีคนอื่นในภาพ (สามารถดูตัวอย่างจากภาพอินโฟกราฟิกด้านบนได้เลยครับ)',
         sortOrder: 1,
       },
       {
         question: 'นำภาพไปใช้ในเชิงพาณิชย์ (ทำโปรไฟล์ธุรกิจ ยิงแอด ลงสินค้า) ได้ไหม?',
-        answer: 'ได้ 100% ครับ คุณจะได้รับสิทธิ์ในการนำภาพไปใช้งานเชิงพาณิชย์ โฆษณา หรือโปรโมทแบรนด์ส่วนตัวได้อย่างเต็มที่โดยไม่มีข้อผูกมัด',
+        answer:
+          'ได้ 100% ครับ คุณจะได้รับสิทธิ์ในการนำภาพไปใช้งานเชิงพาณิชย์ โฆษณา หรือโปรโมทแบรนด์ส่วนตัวได้อย่างเต็มที่โดยไม่มีข้อผูกมัด',
         sortOrder: 2,
       },
       {
@@ -518,45 +571,43 @@ export function seedSampleData() {
       },
       {
         question: 'สามารถปรับแก้งานได้หรือไม่?',
-        answer: 'สามารถปรับแต่งรายละเอียด เช่น ทรงผม สีหน้า โทนสีเสื้อผ้า หรือฉากหลัง เพื่อให้ได้ผลลัพธ์ที่ตรงใจและเป็นธรรมชาติที่สุดครับ',
+        answer:
+          'สามารถปรับแต่งรายละเอียด เช่น ทรงผม สีหน้า โทนสีเสื้อผ้า หรือฉากหลัง เพื่อให้ได้ผลลัพธ์ที่ตรงใจและเป็นธรรมชาติที่สุดครับ',
         sortOrder: 4,
       },
       {
         question: 'ขั้นตอนการเริ่มสั่งงานทำอย่างไร?',
-        answer: 'เพียงเลือกสไตล์ที่ชอบจากเว็บนี้ แล้วทัก LINE ID: tatchaihot ส่งรูปที่ต้องการทำมาคุยรายละเอียดและประเมินราคาได้ทันทีครับ',
+        answer:
+          'เพียงเลือกสไตล์ที่ชอบจากเว็บนี้ แล้วทัก LINE ID: tatchaihot ส่งรูปที่ต้องการทำมาคุยรายละเอียดและประเมินราคาได้ทันทีครับ',
         sortOrder: 5,
       },
     ];
 
     for (const f of defaultFaqs) {
-      createFaq(f);
+      await createFaq(f);
     }
   }
 
-  // Seed Albums if empty
-  if (albumCount.count === 0) {
-    const alb1 = createAlbum({
+  if (albumCount === 0) {
+    await createAlbum({
       title: 'Realistic AI Models & Fashion Portraits',
-      description: 'ภาพถ่ายโมเดลเสมือนคนจริง แฟชั่นนิตยสาร โฆษณาเสื้อผ้า และลุคสตูดิโอระดับไฮเอนด์ คมชัดทุกรายละเอียดผิวและเส้นผม',
+      description:
+        'ภาพถ่ายโมเดลเสมือนคนจริง แฟชั่นนิตยสาร โฆษณาเสื้อผ้า และลุคสตูดิโอระดับไฮเอนด์ คมชัดทุกรายละเอียดผิวและเส้นผม',
       sortOrder: 1,
     });
 
-    const alb2 = createAlbum({
+    await createAlbum({
       title: 'Commercial Product & Ad Creatives',
-      description: 'ภาพโฆษณาสินค้า บรรจุภัณฑ์ และฉากหลังพรีเมียม สไตล์ 3D Luxury และสตูดิโอจัดแสง สำหรับยิงแอดและการตลาดออนไลน์',
+      description:
+        'ภาพโฆษณาสินค้า บรรจุภัณฑ์ และฉากหลังพรีเมียม สไตล์ 3D Luxury และสตูดิโอจัดแสง สำหรับยิงแอดและการตลาดออนไลน์',
       sortOrder: 2,
     });
 
-    const alb3 = createAlbum({
+    await createAlbum({
       title: 'Cinematic Sci-Fi & Cyberpunk Concept Art',
-      description: 'งานภาพยนตร์ โลกอนาคต ไซไฟ นีออน สเปเชียลเอฟเฟกต์ และคอนเซ็ปต์อาร์ตระดับ AAA สำหรับงานเกม นิยาย และมีเดียโปรดักชัน',
+      description:
+        'งานภาพยนตร์ โลกอนาคต ไซไฟ นีออน สเปเชียลเอฟเฟกต์ และคอนเซ็ปต์อาร์ตระดับ AAA สำหรับงานเกม นิยาย และมีเดียโปรดักชัน',
       sortOrder: 3,
     });
   }
-}
-
-try {
-  seedSampleData();
-} catch (e) {
-  console.error('Seed error:', e);
 }

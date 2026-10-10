@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getAllAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, db } from '@/lib/db';
+import {
+  getAllAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  getAnnouncementById,
+} from '@/lib/db';
 import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function GET() {
   try {
-    const announcements = getAllAnnouncements();
+    const announcements = await getAllAnnouncements();
     return NextResponse.json({ success: true, announcements });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -45,7 +51,7 @@ export async function POST(req: Request) {
         imageUrl = processed.previewUrl;
       }
 
-      const announcement = createAnnouncement({
+      const announcement = await createAnnouncement({
         title: title.trim(),
         content: content?.trim() || undefined,
         imageUrl,
@@ -57,7 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, announcement });
     } else {
       const body = await req.json();
-      const announcement = createAnnouncement({
+      const announcement = await createAnnouncement({
         title: body.title,
         content: body.content,
         imageUrl: body.imageUrl,
@@ -83,7 +89,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }
 
-    const updated = updateAnnouncement(body.id, {
+    const updated = await updateAnnouncement(body.id, {
       title: body.title,
       content: body.content,
       imageUrl: body.imageUrl,
@@ -108,12 +114,12 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }
 
-    const ann = db.prepare('SELECT imageUrl FROM announcements WHERE id = ?').get(id) as { imageUrl: string | null } | undefined;
+    const ann = await getAnnouncementById(id);
     if (ann?.imageUrl && (ann.imageUrl.includes('cloudinary.com') || ann.imageUrl.startsWith('f-secret-art'))) {
       await deleteRemoteImage(ann.imageUrl);
     }
 
-    const ok = deleteAnnouncement(id);
+    const ok = await deleteAnnouncement(id);
     return NextResponse.json({ success: ok });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

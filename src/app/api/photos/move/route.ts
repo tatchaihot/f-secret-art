@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const movedCount = movePhotos(photoIds, targetAlbumId);
+    const movedCount = await movePhotos(photoIds, targetAlbumId);
     return NextResponse.json({ success: true, movedCount });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

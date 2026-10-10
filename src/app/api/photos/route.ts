@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createPhoto, deletePhotos, db } from '@/lib/db';
+import { createPhoto, deletePhotos, getPhotosByIds } from '@/lib/db';
 import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const processed = await processUploadedImage(buffer, file.name, `f-secret-art/album-${albumId}`);
 
     // Save record to SQLite
-    const photo = createPhoto({
+    const photo = await createPhoto({
       albumId,
       originalName: file.name,
       filename: processed.filename,
@@ -78,15 +78,14 @@ export async function DELETE(req: Request) {
     }
 
     // Cleanup from Cloudinary if remote
-    const placeholders = photoIds.map(() => '?').join(',');
-    const photosToDelete = db.prepare(`SELECT filename, originalUrl FROM photos WHERE id IN (${placeholders})`).all(...photoIds) as Array<{ filename: string; originalUrl: string }>;
+    const photosToDelete = await getPhotosByIds(photoIds);
     for (const p of photosToDelete) {
       if (p.filename?.startsWith('f-secret-art') || p.originalUrl?.includes('cloudinary.com')) {
         await deleteRemoteImage(p.filename || p.originalUrl);
       }
     }
 
-    const count = deletePhotos(photoIds);
+    const count = await deletePhotos(photoIds);
     return NextResponse.json({ success: true, deletedCount: count });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -4,7 +4,7 @@ import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function GET() {
   try {
-    const albums = getAllAlbums();
+    const albums = await getAllAlbums();
     return NextResponse.json({ success: true, albums });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
     }
 
-    const album = createAlbum({
+    const album = await createAlbum({
       title: body.title.trim(),
       description: body.description?.trim(),
       sortOrder: Number(body.sortOrder) || 0,

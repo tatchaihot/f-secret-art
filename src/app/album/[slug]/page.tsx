@@ -13,18 +13,18 @@ interface AlbumPageProps {
 
 export async function generateMetadata({ params }: AlbumPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const album = getAlbumBySlug(slug);
-  if (!album) return { title: 'Album Not Found — Lumen Atelier' };
+  const album = await getAlbumBySlug(slug);
+  if (!album) return { title: 'Album Not Found — F-Secret AI Art' };
 
   return {
-    title: `${album.title} — Lumen Atelier Archive`,
+    title: `${album.title} — F-Secret AI Art`,
     description: album.description || `Photo gallery for ${album.title}`,
   };
 }
 
 export default async function AlbumPage({ params }: AlbumPageProps) {
   const { slug } = await params;
-  const album = getAlbumBySlug(slug);
+  const album = await getAlbumBySlug(slug);
 
   if (!album) {
     notFound();

@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const album = getAlbumById(id);
+    const album = await getAlbumById(id);
     if (!album) {
       return NextResponse.json({ success: false, error: 'Album not found' }, { status: 404 });
     }
@@ -28,7 +28,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const updated = updateAlbum(id, body);
+    const updated = await updateAlbum(id, body);
     if (!updated) {
       return NextResponse.json({ success: false, error: 'Album not found' }, { status: 404 });
     }
@@ -47,7 +47,7 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const deleted = deleteAlbum(id);
+    const deleted = await deleteAlbum(id);
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Album not found or already deleted' }, { status: 404 });
     }
