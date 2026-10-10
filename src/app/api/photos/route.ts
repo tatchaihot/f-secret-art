@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createPhoto, deletePhotos, db } from '@/lib/db';
 import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
+import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function POST(req: Request) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -11,6 +15,22 @@ export async function POST(req: Request) {
     if (!file || !albumId) {
       return NextResponse.json(
         { success: false, error: 'File and albumId are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate MIME type and size limit
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json(
+        { success: false, error: 'ไฟล์ที่อัปโหลดต้องเป็นรูปภาพเท่านั้น' },
+        { status: 400 }
+      );
+    }
+
+    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { success: false, error: 'ขนาดไฟล์เกินกำหนด (สูงสุด 25MB ต่อรูป)' },
         { status: 400 }
       );
     }
@@ -43,6 +63,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const body = await req.json();
     const { photoIds } = body;

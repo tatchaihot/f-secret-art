@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAlbumById, updateAlbum, deleteAlbum } from '@/lib/db';
+import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function GET(
   req: Request,
@@ -21,6 +22,9 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const { id } = await params;
     const body = await req.json();
@@ -38,6 +42,9 @@ export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const { id } = await params;
     const deleted = deleteAlbum(id);

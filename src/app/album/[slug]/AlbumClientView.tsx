@@ -67,6 +67,20 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
     }
   };
 
+  const [lineCopied, setLineCopied] = useState(false);
+
+  const handleOrderViaLine = () => {
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const text = `สวัสดีครับ สนใจสั่งทำภาพ AI สไตล์ "${album.title}" ครับ (ลิงก์: ${currentUrl})`;
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setLineCopied(true);
+      setTimeout(() => setLineCopied(false), 3000);
+    }
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    window.open(lineUrl, '_blank');
+  };
+
   const handleShare = () => {
     if (typeof window !== 'undefined') {
       navigator.clipboard.writeText(window.location.href);
@@ -143,17 +157,17 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
         </Link>
 
         <div className="flex items-center gap-2">
-          {/* Order this style via LINE */}
-          <a
-            href="https://line.me/ti/p/~tatchaihot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-3.5 py-1.5 font-mono text-xs text-white font-semibold shadow-md shadow-[#06C755]/20 hover:scale-105 transition-all"
+          {/* Order this style via LINE with automatic style name context */}
+          <button
+            type="button"
+            onClick={handleOrderViaLine}
+            className="flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-4 py-2 font-mono text-xs text-white font-semibold shadow-md shadow-[#06C755]/20 hover:scale-105 transition-all cursor-pointer"
+            title="กดเพื่อเปิด LINE พร้อมแนบชื่อสไตล์นี้โดยอัตโนมัติ"
           >
             <MessageCircle className="h-3.5 w-3.5 fill-current" />
-            <span className="hidden sm:inline">สั่งทำสไตล์นี้</span>
+            <span className="hidden sm:inline">{lineCopied ? 'คัดลอกข้อความแล้ว!' : 'สั่งทำสไตล์นี้'}</span>
             <span>(LINE)</span>
-          </a>
+          </button>
 
           {/* Share Button */}
           <button

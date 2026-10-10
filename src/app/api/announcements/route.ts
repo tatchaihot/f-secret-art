@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, db } from '@/lib/db';
 import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
+import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function GET() {
   try {
@@ -12,6 +13,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const contentType = req.headers.get('content-type') || '';
 
@@ -29,6 +33,12 @@ export async function POST(req: Request) {
 
       let imageUrl: string | undefined;
       if (file && file.size > 0) {
+        if (!file.type.startsWith('image/')) {
+          return NextResponse.json({ success: false, error: 'ไฟล์ต้องเป็นรูปภาพเท่านั้น' }, { status: 400 });
+        }
+        if (file.size > 25 * 1024 * 1024) {
+          return NextResponse.json({ success: false, error: 'ขนาดไฟล์เกิน 25MB' }, { status: 400 });
+        }
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
         const processed = await processUploadedImage(buffer, file.name, 'f-secret-art/announcements');
@@ -64,6 +74,9 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const body = await req.json();
     if (!body.id) {
@@ -86,6 +99,9 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const { id } = await req.json();
     if (!id) {

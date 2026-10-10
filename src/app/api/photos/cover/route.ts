@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { setAlbumCover } from '@/lib/db';
+import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
 export async function POST(req: Request) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) return unauthorizedResponse();
+
   try {
     const body = await req.json();
     const { albumId, photoThumbUrl } = body;

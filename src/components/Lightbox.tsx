@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Download, Heart, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, Heart, ZoomIn, ZoomOut, AlertCircle } from 'lucide-react';
 import { Photo } from '@/lib/db';
 
 interface LightboxProps {
@@ -26,13 +26,17 @@ export default function Lightbox({
   const currentPhoto = photos[currentIndex];
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isZoomed, setIsZoomed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const handleNext = useCallback(() => {
     if (currentIndex < photos.length - 1) {
       setImgLoaded(false);
+      setHasError(false);
       setIsZoomed(false);
+      setPanOffset({ x: 0, y: 0 });
       onNavigate(currentIndex + 1);
     }
   }, [currentIndex, photos.length, onNavigate]);
@@ -40,10 +44,21 @@ export default function Lightbox({
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
       setImgLoaded(false);
+      setHasError(false);
       setIsZoomed(false);
+      setPanOffset({ x: 0, y: 0 });
       onNavigate(currentIndex - 1);
     }
   }, [currentIndex, onNavigate]);
+
+  const toggleZoom = () => {
+    setIsZoomed((prev) => {
+      if (prev) {
+        setPanOffset({ x: 0, y: 0 });
+      }
+      return !prev;
+    });
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -64,37 +79,49 @@ export default function Lightbox({
     };
   }, [isOpen, onClose, handleNext, handlePrev]);
 
-  // Touch gesture handling (Swipe left/right to navigate, swipe down to dismiss)
+  // Touch gesture handling (Swipe navigation + Pan when zoomed)
   const onTouchStart = (e: React.TouchEvent) => {
-    if (isZoomed) return;
     setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
     setTouchDelta({ x: 0, y: 0 });
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart || isZoomed) return;
+    if (!touchStart) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
-    setTouchDelta({
-      x: currentX - touchStart.x,
-      y: currentY - touchStart.y,
-    });
+    const deltaX = currentX - touchStart.x;
+    const deltaY = currentY - touchStart.y;
+
+    if (isZoomed) {
+      // Free panning when zoomed in
+      setPanOffset((prev) => ({
+        x: prev.x + deltaX * 0.5,
+        y: prev.y + deltaY * 0.5,
+      }));
+      setTouchStart({ x: currentX, y: currentY });
+    } else {
+      setTouchDelta({ x: deltaX, y: deltaY });
+    }
   };
 
   const onTouchEnd = () => {
-    if (!touchStart || isZoomed) return;
+    if (isZoomed) {
+      setTouchStart(null);
+      return;
+    }
+    if (!touchStart) return;
 
-    const minSwipeDistance = 50;
+    const minSwipeDistance = 45;
     const { x, y } = touchDelta;
 
-    // Vertical swipe down to close
-    if (y > 100 && Math.abs(x) < 80) {
+    // Vertical swipe down to close (forgiving diagonal threshold)
+    if (y > 90 && Math.abs(x) < 130) {
       onClose();
     }
     // Horizontal swipe for next/prev
-    else if (x < -minSwipeDistance && Math.abs(y) < 100) {
+    else if (x < -minSwipeDistance && Math.abs(y) < 130) {
       handleNext();
-    } else if (x > minSwipeDistance && Math.abs(y) < 100) {
+    } else if (x > minSwipeDistance && Math.abs(y) < 130) {
       handlePrev();
     }
 
@@ -133,9 +160,9 @@ export default function Lightbox({
           {/* Zoom Toggle */}
           <button
             type="button"
-            onClick={() => setIsZoomed(!isZoomed)}
+            onClick={toggleZoom}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors"
-            title={isZoomed ? 'Zoom out' : 'Zoom in'}
+            title={isZoomed ? 'Zoom out (ย่อ)' : 'Zoom in (ขยาย)'}
           >
             {isZoomed ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
           </button>
@@ -182,12 +209,14 @@ export default function Lightbox({
       <div
         className="relative flex h-full w-full items-center justify-center p-2 sm:p-8 overflow-hidden"
         style={{
-          transform: !isZoomed ? `translate(${touchDelta.x * 0.3}px, ${touchDelta.y * 0.5}px)` : 'none',
+          transform: !isZoomed
+            ? `translate(${touchDelta.x * 0.3}px, ${touchDelta.y * 0.5}px)`
+            : `translate(${panOffset.x}px, ${panOffset.y}px)`,
           transition: touchStart ? 'none' : 'transform 0.3s ease-out',
         }}
       >
         {/* Placeholder / Blur background while high-res loads */}
-        {currentPhoto.blurDataUrl && !imgLoaded && (
+        {currentPhoto.blurDataUrl && !imgLoaded && !hasError && (
           <img
             src={currentPhoto.blurDataUrl}
             alt=""
@@ -195,16 +224,25 @@ export default function Lightbox({
           />
         )}
 
-        <img
-          key={currentPhoto.id}
-          src={currentPhoto.previewUrl || currentPhoto.originalUrl}
-          alt={currentPhoto.originalName}
-          onLoad={() => setImgLoaded(true)}
-          className={`max-h-[85vh] max-w-[95vw] sm:max-h-[90vh] sm:max-w-[85vw] object-contain transition-all duration-300 select-none ${
-            isZoomed ? 'scale-150 cursor-grab' : 'scale-100'
-          } ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-          draggable={false}
-        />
+        {hasError ? (
+          <div className="flex flex-col items-center justify-center text-center p-8 rounded-2xl glass-panel border border-white/10 text-zinc-400 space-y-2">
+            <AlertCircle className="h-10 w-10 text-rose-400" />
+            <p className="text-sm font-mono text-zinc-200">ไม่สามารถโหลดรูปภาพได้</p>
+            <p className="text-xs text-zinc-500 font-mono">โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p>
+          </div>
+        ) : (
+          <img
+            key={currentPhoto.id}
+            src={currentPhoto.previewUrl || currentPhoto.originalUrl}
+            alt={currentPhoto.originalName}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setHasError(true)}
+            className={`max-h-[85vh] max-w-[95vw] sm:max-h-[90vh] sm:max-w-[85vw] object-contain transition-all duration-300 select-none ${
+              isZoomed ? 'scale-150 cursor-grab active:cursor-grabbing' : 'scale-100'
+            } ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            draggable={false}
+          />
+        )}
       </div>
 
       {/* Navigation Buttons (Both Mobile & Desktop) */}
@@ -239,7 +277,7 @@ export default function Lightbox({
       {/* Mobile Swipe Guidance Indicator */}
       <div className="sm:hidden absolute bottom-4 inset-x-0 text-center pointer-events-none">
         <span className="text-[11px] font-mono tracking-wider text-zinc-300 bg-black/80 px-3.5 py-1.5 rounded-full border border-white/15 shadow-xl">
-          👉 ใช้นิ้วปัดซ้าย-ขวา เพื่อเลื่อนดูรูป · ปัดลงเพื่อปิด
+          {isZoomed ? '👆 ใช้นิ้วลากเลื่อนดูส่วนต่างๆ ของภาพ' : '👉 ใช้นิ้วปัดซ้าย-ขวา เพื่อเลื่อนดูรูป · ปัดลงเพื่อปิด'}
         </span>
       </div>
     </div>
