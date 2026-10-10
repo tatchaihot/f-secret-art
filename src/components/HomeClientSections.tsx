@@ -2,80 +2,171 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Copy, Check, ChevronDown, MessageCircle, Sparkles, ArrowRight, X, ZoomIn, Eye, Megaphone } from 'lucide-react';
+import { Copy, Check, ChevronDown, MessageCircle, Sparkles, ArrowRight, X, ZoomIn, Megaphone, Info, CheckCircle2, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import { Announcement, FaqItem } from '@/lib/db';
 
-export function AnnouncementBannerSection({ announcements }: { announcements: Announcement[] }) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+// 1. Text & Banner Announcements Section (แยกประกาศข่าวสารอิสระ)
+export function AnnouncementNewsSection({ announcements }: { announcements: Announcement[] }) {
   if (!announcements || announcements.length === 0) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            <Megaphone className="h-4 w-4" />
-          </div>
-          <h3 className="font-serif text-lg sm:text-xl font-normal text-white">
-            ประกาศ & คำแนะนำสำคัญ
-          </h3>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <Megaphone className="h-3.5 w-3.5 animate-pulse" />
         </div>
-        <span className="text-[11px] font-mono text-zinc-400">
-          แตะที่รูปเพื่อดูขนาดเต็ม
-        </span>
+        <h3 className="font-serif text-base sm:text-lg font-normal text-white">
+          ข่าวสารและประกาศจากสตูดิโอ
+        </h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {announcements.map((item) => (
           <div
             key={item.id}
-            onClick={() => setSelectedImage(item.imageUrl)}
-            className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel border border-white/10 hover:border-purple-500/40 transition-all cursor-pointer shadow-xl"
+            className="flex flex-col justify-between rounded-xl glass-panel p-5 border border-white/10 hover:border-amber-500/30 transition-all shadow-lg"
           >
-            {/* 16:9 Horizontal Aspect Ratio for Optimal Mobile View */}
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-zinc-950">
-              <Image
-                src={item.imageUrl}
-                alt={item.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-contain sm:object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-
-              <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-md px-3 py-1 text-[11px] font-mono text-white border border-white/20">
-                <ZoomIn className="h-3.5 w-3.5 text-purple-400" />
-                <span>แตะเพื่อซูมดูรูปเต็ม</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/30">
+                  Announcement
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500">
+                  {item.createdAt?.split('T')[0]}
+                </span>
               </div>
-            </div>
 
-            <div className="p-4 bg-zinc-950/70 border-t border-white/[0.06]">
-              <h4 className="font-serif text-sm sm:text-base font-medium text-white group-hover:text-purple-200 transition-colors line-clamp-2">
+              <h4 className="font-serif text-base sm:text-lg font-medium text-white">
                 {item.title}
               </h4>
+
+              {item.content && (
+                <p className="text-xs sm:text-sm text-zinc-300 font-light leading-relaxed whitespace-pre-line">
+                  {item.content}
+                </p>
+              )}
+
+              {/* Optional Announcement Banner Image */}
+              {item.imageUrl && (
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-zinc-950 mt-3 border border-white/10">
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
             </div>
+
+            {item.linkUrl && (
+              <div className="pt-4 mt-2 border-t border-white/[0.06]">
+                <a
+                  href={item.linkUrl}
+                  target={item.linkUrl.startsWith('http') ? '_blank' : '_self'}
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-mono text-amber-300 hover:text-white transition-colors"
+                >
+                  <span>อ่านเพิ่มเติม / ติดต่อทาง LINE</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            )}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
 
-      {/* Fullscreen Zoom Modal for Infographics */}
-      {selectedImage && (
+// 2. Photo Preparation Guide Section (วิธีส่งรูปถ่ายก่อนหน้า FAQ)
+export function PhotoGuideSection() {
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center max-w-2xl mx-auto space-y-3">
+        <span className="font-mono text-xs uppercase tracking-widest text-purple-400">
+          Photo Preparation Guide
+        </span>
+        <h2 className="font-serif text-2xl sm:text-4xl font-normal text-white">
+          คำแนะนำ: วิธีเตรียมรูปถ่ายเพื่อสร้างภาพ AI
+        </h2>
+        <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
+          เพื่อให้ภาพ AI ที่สร้างออกมามีความเหมือนใบหน้าของคุณและดูเป็นธรรมชาติที่สุด โปรดดูคำแนะนำในการเตรียมรูปถ่าย 4–6 รูปด้านล่างนี้ครับ
+        </p>
+      </div>
+
+      {/* Guide Infographic Card with Zoom feature */}
+      <div className="max-w-4xl mx-auto rounded-2xl glass-panel p-4 sm:p-8 border border-white/15 shadow-2xl space-y-6">
+        <div
+          onClick={() => setIsZoomOpen(true)}
+          className="group relative w-full aspect-[4/5] sm:aspect-[16/10] overflow-hidden rounded-xl bg-zinc-950 border border-white/10 cursor-pointer shadow-inner"
+        >
+          <Image
+            src="/guides/lora-guide.jpg"
+            alt="ส่งรูปแบบไหน เพื่อเทรน LoRA? คำแนะนำวิธีเตรียมรูปภาพ AI"
+            fill
+            className="object-contain p-2 transition-transform duration-500 group-hover:scale-[1.02]"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+
+          {/* Zoom Badge */}
+          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/75 backdrop-blur-md px-3.5 py-1.5 text-xs font-mono text-white border border-white/20 shadow-lg group-hover:scale-105 transition-transform">
+            <ZoomIn className="h-4 w-4 text-purple-400" />
+            <span>แตะเพื่อซูมดูรูปเต็มจอ (ขยายอ่านง่าย)</span>
+          </div>
+        </div>
+
+        {/* Quick Bullet Checklist */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 space-y-2">
+            <h4 className="font-serif text-sm font-medium text-emerald-300 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span>สิ่งที่ควรส่ง (4–6 รูปก็เพียงพอ)</span>
+            </h4>
+            <ul className="text-xs text-zinc-300 space-y-1 font-light list-disc list-inside">
+              <li>หน้าตรง, หันซ้าย, หันขวา</li>
+              <li>ภาพครึ่งตัว และเต็มตัว</li>
+              <li>ยิ้มธรรมชาติ แสงสว่างสม่ำเสมอ ชัดเจน</li>
+              <li>เป็นคนเดียวกันและเป็นรูปเดี่ยว</li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4 space-y-2">
+            <h4 className="font-serif text-sm font-medium text-rose-300 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+              <span>สิ่งที่ควรหลีกเลี่ยง</span>
+            </h4>
+            <ul className="text-xs text-zinc-300 space-y-1 font-light list-disc list-inside">
+              <li>รูปเบลอ หรือมืด ย้อนแสง</li>
+              <li>รูปที่มีคนอื่นอยู่ในภาพ</li>
+              <li>มีสิ่งของหรือมือมาบังใบหน้า</li>
+              <li>รูปที่แต่งฟิลเตอร์จนผิดสัดส่วนจริง</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Fullscreen Lightbox for Infographic */}
+      {isZoomOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-2 sm:p-6 animate-fade-in"
-          onClick={() => setSelectedImage(null)}
+          onClick={() => setIsZoomOpen(false)}
         >
           <button
             type="button"
-            onClick={() => setSelectedImage(null)}
+            onClick={() => setIsZoomOpen(false)}
             className="absolute top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            title="ปิด (Close)"
           >
             <X className="h-5 w-5" />
           </button>
           <div className="relative max-h-[92vh] max-w-[95vw] overflow-auto rounded-xl">
             <img
-              src={selectedImage}
-              alt="Announcement full preview"
+              src="/guides/lora-guide.jpg"
+              alt="คำแนะนำการเตรียมรูปภาพ"
               className="max-h-[90vh] w-auto object-contain rounded-lg shadow-2xl mx-auto"
             />
           </div>
@@ -85,6 +176,7 @@ export function AnnouncementBannerSection({ announcements }: { announcements: An
   );
 }
 
+// 3. Dynamic FAQs Section
 export function FaqSection({ faqs }: { faqs: FaqItem[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
@@ -131,6 +223,7 @@ export function FaqSection({ faqs }: { faqs: FaqItem[] }) {
   );
 }
 
+// 4. Contact & QR Code Section
 export function LineContactCard() {
   const [copied, setCopied] = useState(false);
   const lineId = 'tatchaihot';
@@ -218,6 +311,7 @@ export function LineContactCard() {
   );
 }
 
+// 5. Hero Actions
 export function HeroActions() {
   const [copied, setCopied] = useState(false);
 

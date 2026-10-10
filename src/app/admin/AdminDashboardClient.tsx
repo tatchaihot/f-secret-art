@@ -79,6 +79,7 @@ export default function AdminDashboardClient({
   // Announcement state
   const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
   const [annTitle, setAnnTitle] = useState('');
+  const [annContent, setAnnContent] = useState('');
   const [annLink, setAnnLink] = useState('');
   const [annSortOrder, setAnnSortOrder] = useState(0);
   const annFileInputRef = useRef<HTMLInputElement>(null);
@@ -405,16 +406,19 @@ export default function AdminDashboardClient({
   // Announcement Handlers
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-    const file = annFileInputRef.current?.files?.[0];
-    if (!file || !annTitle.trim()) {
-      showToast('กรุณาเลือกรูปภาพและระบุหัวข้อประกาศ', 'error');
+    if (!annTitle.trim()) {
+      showToast('กรุณาระบุหัวข้อประกาศ', 'error');
       return;
     }
 
+    const file = annFileInputRef.current?.files?.[0];
     setIsUploadingAnn(true);
     const formData = new FormData();
-    formData.append('file', file);
+    if (file) {
+      formData.append('file', file);
+    }
     formData.append('title', annTitle.trim());
+    formData.append('content', annContent.trim());
     formData.append('linkUrl', annLink.trim());
     formData.append('sortOrder', String(annSortOrder));
 
@@ -428,9 +432,10 @@ export default function AdminDashboardClient({
         setAnnouncements([data.announcement, ...announcements]);
         setIsAnnModalOpen(false);
         setAnnTitle('');
+        setAnnContent('');
         setAnnLink('');
         setAnnSortOrder(0);
-        showToast('เพิ่มประกาศ / คำแนะนำเรียบร้อยแล้ว');
+        showToast('เพิ่มประกาศข่าวสารเรียบร้อยแล้ว');
       } else {
         showToast(data.error || 'เกิดข้อผิดพลาดในการบันทึกประกาศ', 'error');
       }
@@ -1066,10 +1071,10 @@ export default function AdminDashboardClient({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 className="font-serif text-xl sm:text-2xl font-normal text-white">
-                  จัดการป้ายประกาศ & อินโฟกราฟิกแนะนำวิธีส่งรูป
+                  จัดการป้ายประกาศ & ข่าวสาร ({announcements.length} รายการ)
                 </h2>
                 <p className="text-xs font-mono text-zinc-400 mt-1">
-                  อัปโหลดแบนเนอร์ข่าวสาร หรือรูปคำแนะนำการเตรียมภาพ LoRA ไปแสดงที่หน้าแรกของเว็บ
+                  เพิ่มประกาศข้อความ หรือแนบภาพแบนเนอร์แนวนอน เพื่อแจ้งข้อมูลและข่าวสารที่หน้าแรก
                 </p>
               </div>
 
@@ -1079,7 +1084,7 @@ export default function AdminDashboardClient({
                 className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-mono uppercase tracking-widest text-black font-semibold hover:bg-zinc-200 transition-colors shadow-lg"
               >
                 <Plus className="h-4 w-4" />
-                <span>+ เพิ่มป้ายประกาศ/คำแนะนำ</span>
+                <span>+ เพิ่มประกาศใหม่</span>
               </button>
             </div>
 
@@ -1089,38 +1094,55 @@ export default function AdminDashboardClient({
                 💡 คำแนะนำขนาดรูปภาพสำหรับแบนเนอร์แนวนอนบนมือถือ
               </h4>
               <p className="text-xs text-zinc-300 font-light leading-relaxed">
-                • **อัตราส่วนที่แนะนำ:** แนวนอนแบบ **16:9** (เช่น **1200 x 675 px** หรือ **1920 x 1080 px**) หรือ **2:1** (เช่น **1200 x 600 px**)<br />
-                • **เหตุผล:** บนจอมือถือ แนวนอนขนาดนี้จะกว้างพอดีจอ ไม่กินความสูงเกินไป และตัวหนังสือในภาพจะใหญ่คมชัดอ่านง่ายที่สุดครับ<br />
-                • **สำหรับภาพอินโฟกราฟิกแนวตั้ง:** (เช่น รูปส่งรูป LoRA) ระบบหน้าบ้านจะมีปุ่ม **"แตะเพื่อซูมดูรูปเต็มจอ"** ให้ลูกค้ากดซูมอ่านตัวหนังสือได้ 100% อยู่แล้วครับ
+                • <strong>อัตราส่วนที่แนะนำ:</strong> แนวนอนแบบ <strong>16:9</strong> (เช่น <strong>1200 x 675 px</strong> หรือ <strong>1920 x 1080 px</strong>) หรือ <strong>2:1</strong> (เช่น <strong>1200 x 600 px</strong>)<br />
+                • <strong>เหตุผล:</strong> บนจอมือถือ แนวนอนขนาดนี้จะกว้างพอดีจอ ไม่กินความสูงเกินไป และตัวหนังสือในภาพจะใหญ่คมชัดอ่านง่ายที่สุดครับ<br />
+                • <strong>ประกาศแบบข้อความ:</strong> ไม่จำเป็นต้องแนบรูปภาพ ระบบจะจัดแสดงเป็นการ์ดข้อความสวยงามหรูหราให้โดยอัตโนมัติ
               </p>
             </div>
 
             {/* Announcements Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {announcements.map((ann) => (
-                <div key={ann.id} className="rounded-2xl glass-panel overflow-hidden border border-white/10 shadow-xl">
-                  <div className="relative aspect-[16/9] w-full bg-zinc-950">
-                    <Image
-                      src={ann.imageUrl}
-                      alt={ann.title}
-                      fill
-                      className="object-contain sm:object-cover"
-                    />
-                  </div>
-                  <div className="p-5 flex items-center justify-between gap-4">
-                    <div>
-                      <h4 className="font-serif text-base font-medium text-white line-clamp-1">
+                <div key={ann.id} className="rounded-2xl glass-panel overflow-hidden border border-white/10 shadow-xl flex flex-col justify-between">
+                  {ann.imageUrl ? (
+                    <div className="relative aspect-[16/9] w-full bg-zinc-950 border-b border-white/5">
+                      <Image
+                        src={ann.imageUrl}
+                        alt={ann.title}
+                        fill
+                        className="object-contain sm:object-cover"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="p-5 flex items-start justify-between gap-4 flex-1">
+                    <div className="space-y-1.5 flex-1">
+                      <h4 className="font-serif text-base font-medium text-white">
                         {ann.title}
                       </h4>
-                      <span className="text-[11px] font-mono text-zinc-400">
-                        ลำดับที่ {ann.sortOrder}
-                      </span>
+                      {ann.content && (
+                        <p className="text-xs text-zinc-300 font-light line-clamp-3 whitespace-pre-line leading-relaxed">
+                          {ann.content}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] font-mono text-zinc-400">
+                        <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">ลำดับที่ {ann.sortOrder}</span>
+                        {ann.linkUrl && (
+                          <a
+                            href={ann.linkUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-purple-400 hover:underline truncate max-w-[200px]"
+                          >
+                            🔗 {ann.linkUrl}
+                          </a>
+                        )}
+                      </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteAnnouncement(ann.id)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 shrink-0"
                       title="ลบประกาศนี้"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1358,38 +1380,25 @@ export default function AdminDashboardClient({
 
       {/* CREATE ANNOUNCEMENT MODAL */}
       {isAnnModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-          <div className="w-full max-w-lg rounded-2xl glass-panel p-6 sm:p-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl glass-panel p-6 sm:p-8 shadow-2xl my-8">
             <h2 className="font-serif text-xl font-medium text-white mb-1">
-              เพิ่มป้ายประกาศ / ภาพคำแนะนำ
+              เพิ่มประกาศข่าวสาร / ข้อความแจ้งเตือน
             </h2>
             <p className="text-xs font-mono text-zinc-400 mb-6 font-light">
-              แนะนำอัตราส่วนแนวนอน 16:9 (เช่น 1200x675) เพื่อความสวยงามคมชัดบนมือถือ
+              สามารถระบุข้อความประกาศอย่างเดียว หรือแนบรูปภาพแบนเนอร์แนวนอน 16:9 เพิ่มเติมได้
             </p>
 
             <form onSubmit={handleCreateAnnouncement} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  เลือกไฟล์รูปภาพแบนเนอร์/อินโฟกราฟิก *
-                </label>
-                <input
-                  ref={annFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  required
-                  className="w-full text-xs font-mono text-zinc-400 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  หัวข้อประกาศ / คำอธิบายสั้นๆ *
+                  หัวข้อประกาศ *
                 </label>
                 <input
                   type="text"
                   value={annTitle}
                   onChange={(e) => setAnnTitle(e.target.value)}
-                  placeholder="เช่น วิธีเตรียมภาพเพื่อเทรน LoRA ให้เหมือนที่สุด"
+                  placeholder="เช่น เปิดรับคิวงานสร้างภาพ AI ประจำสัปดาห์นี้"
                   required
                   className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
                 />
@@ -1397,7 +1406,45 @@ export default function AdminDashboardClient({
 
               <div>
                 <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ลำดับการแสดงผล
+                  เนื้อหาประกาศ (ข้อความรายละเอียด)
+                </label>
+                <textarea
+                  value={annContent}
+                  onChange={(e) => setAnnContent(e.target.value)}
+                  placeholder="พิมพ์ข้อความรายละเอียดประกาศ แจ้งข้อมูล ข่าวสาร หรือโปรโมชั่น..."
+                  rows={4}
+                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                  รูปภาพแบนเนอร์ (ไม่บังคับ - แนะนำแนวนอน 16:9 เช่น 1200x675)
+                </label>
+                <input
+                  ref={annFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs font-mono text-zinc-400 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                  ลิงก์ปลายทาง (ไม่บังคับ เช่น LINE หรือลิงก์ภายนอก)
+                </label>
+                <input
+                  type="text"
+                  value={annLink}
+                  onChange={(e) => setAnnLink(e.target.value)}
+                  placeholder="https://line.me/ti/p/~tatchaihot"
+                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                  ลำดับการแสดงผล (0 ขึ้นก่อน)
                 </label>
                 <input
                   type="number"
@@ -1421,7 +1468,7 @@ export default function AdminDashboardClient({
                   disabled={isUploadingAnn}
                   className="rounded-lg bg-white px-5 py-2 text-xs font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200 disabled:opacity-50"
                 >
-                  {isUploadingAnn ? 'กำลังอัปโหลด...' : 'บันทึกประกาศ'}
+                  {isUploadingAnn ? 'กำลังบันทึก...' : 'บันทึกประกาศ'}
                 </button>
               </div>
             </form>

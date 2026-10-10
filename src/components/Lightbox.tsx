@@ -207,7 +207,7 @@ export default function Lightbox({
         />
       </div>
 
-      {/* Navigation Buttons (Desktop & Tablet) */}
+      {/* Navigation Buttons (Both Mobile & Desktop) */}
       {currentIndex > 0 && (
         <button
           type="button"
@@ -215,10 +215,10 @@ export default function Lightbox({
             e.stopPropagation();
             handlePrev();
           }}
-          className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105"
-          title="Previous photo (Arrow Left)"
+          className="flex absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/60 sm:bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105 border border-white/15"
+          title="Previous photo (รูปก่อนหน้า)"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
         </button>
       )}
 
@@ -229,17 +229,17 @@ export default function Lightbox({
             e.stopPropagation();
             handleNext();
           }}
-          className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105"
-          title="Next photo (Arrow Right)"
+          className="flex absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/60 sm:bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105 border border-white/15"
+          title="Next photo (รูปถัดไป)"
         >
-          <ChevronRight className="h-6 w-6" />
+          <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
         </button>
       )}
 
       {/* Mobile Swipe Guidance Indicator */}
       <div className="sm:hidden absolute bottom-4 inset-x-0 text-center pointer-events-none">
-        <span className="text-[11px] font-mono tracking-widest text-zinc-400 bg-black/60 px-3 py-1 rounded-full border border-white/10">
-          Swipe left/right to browse · Swipe down to exit
+        <span className="text-[11px] font-mono tracking-wider text-zinc-300 bg-black/80 px-3.5 py-1.5 rounded-full border border-white/15 shadow-xl">
+          👉 ใช้นิ้วปัดซ้าย-ขวา เพื่อเลื่อนดูรูป · ปัดลงเพื่อปิด
         </span>
       </div>
     </div>

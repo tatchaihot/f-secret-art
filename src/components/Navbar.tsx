@@ -30,6 +30,9 @@ export default function Navbar() {
           <a href="/#workflow" className="hover:text-white transition-colors">
             ขั้นตอนสั่งงาน
           </a>
+          <a href="/#guide" className="hover:text-white transition-colors">
+            วิธีส่งรูป
+          </a>
           <a href="/#faq" className="hover:text-white transition-colors">
             คำถามที่พบบ่อย
           </a>

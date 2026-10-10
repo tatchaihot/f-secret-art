@@ -19,20 +19,26 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
       const title = formData.get('title') as string | null;
+      const content = formData.get('content') as string | null;
       const linkUrl = formData.get('linkUrl') as string | null;
       const sortOrder = formData.get('sortOrder') as string | null;
 
-      if (!file || !title) {
-        return NextResponse.json({ success: false, error: 'File and title are required' }, { status: 400 });
+      if (!title) {
+        return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
       }
 
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const processed = await processUploadedImage(buffer, file.name);
+      let imageUrl: string | undefined;
+      if (file && file.size > 0) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const processed = await processUploadedImage(buffer, file.name);
+        imageUrl = processed.previewUrl;
+      }
 
       const announcement = createAnnouncement({
         title: title.trim(),
-        imageUrl: processed.previewUrl,
+        content: content?.trim() || undefined,
+        imageUrl,
         linkUrl: linkUrl?.trim() || undefined,
         isActive: true,
         sortOrder: Number(sortOrder) || 0,
@@ -43,6 +49,7 @@ export async function POST(req: Request) {
       const body = await req.json();
       const announcement = createAnnouncement({
         title: body.title,
+        content: body.content,
         imageUrl: body.imageUrl,
         linkUrl: body.linkUrl,
         isActive: body.isActive !== false,
@@ -65,6 +72,7 @@ export async function PUT(req: Request) {
 
     const updated = updateAnnouncement(body.id, {
       title: body.title,
+      content: body.content,
       imageUrl: body.imageUrl,
       linkUrl: body.linkUrl,
       isActive: body.isActive !== undefined ? (body.isActive ? 1 : 0) : undefined,

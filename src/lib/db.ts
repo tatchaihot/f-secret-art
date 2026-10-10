@@ -51,7 +51,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS announcements (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    imageUrl TEXT NOT NULL,
+    content TEXT,
+    imageUrl TEXT,
     linkUrl TEXT,
     isActive INTEGER DEFAULT 1,
     sortOrder INTEGER DEFAULT 0,
@@ -72,6 +73,39 @@ try {
   db.exec(`ALTER TABLE albums ADD COLUMN sortOrder INTEGER DEFAULT 0;`);
 } catch {
   // column already exists
+}
+
+// Safe migration for content in announcements
+try {
+  db.exec(`ALTER TABLE announcements ADD COLUMN content TEXT;`);
+} catch {
+  // column already exists
+}
+
+// Safe migration to make announcements.imageUrl nullable
+try {
+  const annInfo = db.prepare('PRAGMA table_info(announcements)').all() as Array<{ name: string; notnull: number }>;
+  const imgCol = annInfo.find((c) => c.name === 'imageUrl');
+  if (imgCol && imgCol.notnull === 1) {
+    db.exec(`
+      CREATE TABLE announcements_temp (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT,
+        imageUrl TEXT,
+        linkUrl TEXT,
+        isActive INTEGER DEFAULT 1,
+        sortOrder INTEGER DEFAULT 0,
+        createdAt TEXT NOT NULL
+      );
+      INSERT INTO announcements_temp (id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt)
+      SELECT id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt FROM announcements;
+      DROP TABLE announcements;
+      ALTER TABLE announcements_temp RENAME TO announcements;
+    `);
+  }
+} catch {
+  // ignore migration error
 }
 
 export interface Album {
@@ -109,7 +143,8 @@ export interface Photo {
 export interface Announcement {
   id: string;
   title: string;
-  imageUrl: string;
+  content: string | null;
+  imageUrl: string | null;
   linkUrl: string | null;
   isActive: number;
   sortOrder: number;
@@ -336,7 +371,8 @@ export function getActiveAnnouncements(): Announcement[] {
 
 export function createAnnouncement(data: {
   title: string;
-  imageUrl: string;
+  content?: string;
+  imageUrl?: string;
   linkUrl?: string;
   isActive?: boolean;
   sortOrder?: number;
@@ -345,14 +381,15 @@ export function createAnnouncement(data: {
   const now = new Date().toISOString();
 
   const stmt = db.prepare(`
-    INSERT INTO announcements (id, title, imageUrl, linkUrl, isActive, sortOrder, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO announcements (id, title, content, imageUrl, linkUrl, isActive, sortOrder, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
     id,
     data.title,
-    data.imageUrl,
+    data.content || null,
+    data.imageUrl || null,
     data.linkUrl || null,
     data.isActive !== false ? 1 : 0,
     data.sortOrder ?? 0,
@@ -366,7 +403,7 @@ export function updateAnnouncement(id: string, data: Partial<Announcement>): Ann
   const fields: string[] = [];
   const values: any[] = [];
 
-  const allowedFields = ['title', 'imageUrl', 'linkUrl', 'isActive', 'sortOrder'];
+  const allowedFields = ['title', 'content', 'imageUrl', 'linkUrl', 'isActive', 'sortOrder'];
   for (const key of allowedFields) {
     if (key in data) {
       fields.push(`${key} = ?`);
@@ -450,12 +487,12 @@ export function seedSampleData() {
 
   const now = new Date().toISOString();
 
-  // Seed Announcements / Guide
+  // Seed Announcements / News
   if (annCount.count === 0) {
     createAnnouncement({
-      title: 'คำแนะนำ: วิธีส่งรูปถ่ายสำหรับเทรน AI เพื่อให้ได้ภาพเหมือนและเป๊ะที่สุด',
-      imageUrl: '/guides/lora-guide.jpg',
-      linkUrl: '#guide-modal',
+      title: 'ยินดีต้อนรับสู่ F-Secret AI Art · สตูดิโอสร้างสรรค์ภาพ AI ระดับพรีเมียม',
+      content: 'เปิดรับคิวงานสร้างสรรค์ภาพ AI สำหรับโปรไฟล์ธุรกิจ โมเดลเสมือนจริง และภาพสินค้าโฆษณา สอบถามคิวงานหรือส่งบรีฟตัวอย่างทัก LINE ID: tatchaihot ได้ตลอด 24 ชม. ครับ',
+      linkUrl: 'https://line.me/ti/p/~tatchaihot',
       isActive: true,
       sortOrder: 1,
     });

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllAlbums, getActiveAnnouncements, getAllFaqs, seedSampleData } from '@/lib/db';
 import Navbar from '@/components/Navbar';
-import { HeroActions, LineContactCard, FaqSection, AnnouncementBannerSection } from '@/components/HomeClientSections';
+import { HeroActions, LineContactCard, FaqSection, AnnouncementNewsSection, PhotoGuideSection } from '@/components/HomeClientSections';
 import { Sparkles, ArrowRight, Images, Layers } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,6 @@ export default async function HomePage() {
   }
 
   const allAlbums = getAllAlbums();
-  // Highlight top 3 albums for homepage so the page stays fast and uncluttered
   const featuredAlbums = allAlbums.slice(0, 3);
   const announcements = getActiveAnnouncements();
   const faqs = getAllFaqs();
@@ -27,7 +26,6 @@ export default async function HomePage() {
       <main className="flex-1">
         {/* HERO SECTION */}
         <section className="relative overflow-hidden border-b border-white/[0.08] pt-20 pb-16 sm:pt-28 sm:pb-20">
-          {/* Subtle gradient lights */}
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-gradient-to-tr from-purple-600/20 via-indigo-600/15 to-pink-600/10 filter blur-[120px] pointer-events-none" />
 
           <div className="relative mx-auto max-w-7xl px-4 sm:px-8">
@@ -45,22 +43,21 @@ export default async function HomePage() {
                 สร้างสรรค์ภาพถ่ายโปรไฟล์โมเดลเสมือนจริง สินค้า โฆษณา และงานศิลป์สุดประณีต ตรงตามบรีฟของคุณ เลือกดูสไตล์ภาพที่ต้องการด้านล่าง แล้วทัก LINE เพื่อเริ่มงานได้ทันที
               </p>
 
-              {/* Call-to-actions */}
               <HeroActions />
             </div>
           </div>
         </section>
 
-        {/* ANNOUNCEMENT & INFOGRAPHIC GUIDE SECTION (แทนแถบ 4 แถบเดิม) */}
+        {/* 1. SEPARATE ANNOUNCEMENTS / NEWS (ข่าวสาร & ข้อความประกาศอิสระ) */}
         {announcements.length > 0 && (
-          <section className="border-b border-white/[0.08] bg-black/40 py-12">
+          <section className="border-b border-white/[0.08] bg-black/40 py-10">
             <div className="mx-auto max-w-7xl px-4 sm:px-8">
-              <AnnouncementBannerSection announcements={announcements} />
+              <AnnouncementNewsSection announcements={announcements} />
             </div>
           </section>
         )}
 
-        {/* FEATURED 3 STYLES SECTION (คัดเลือกมา 3 อันล่าสุด เพื่อให้หน้าแรกกระชับ) */}
+        {/* 2. FEATURED 3 STYLES SECTION */}
         <section id="styles" className="mx-auto max-w-7xl px-4 py-20 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-10 gap-4">
             <div>
@@ -95,7 +92,6 @@ export default async function HomePage() {
                   href={`/album/${album.slug}`}
                   className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-500/10"
                 >
-                  {/* Cover Image Container */}
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-950">
                     <Image
                       src={cover}
@@ -114,7 +110,6 @@ export default async function HomePage() {
                     </div>
                   </div>
 
-                  {/* Album Info */}
                   <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
                     <div>
                       <h3 className="font-serif text-xl font-medium text-white group-hover:text-purple-200 transition-colors line-clamp-1">
@@ -139,7 +134,6 @@ export default async function HomePage() {
             })}
           </div>
 
-          {/* Large CTA button to view all collections */}
           <div className="mt-12 text-center">
             <Link
               href="/galleries"
@@ -152,7 +146,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3 STEPS HOW TO ORDER SECTION */}
+        {/* 3. THREE STEPS HOW TO ORDER SECTION */}
         <section id="workflow" className="border-t border-white/[0.08] bg-zinc-950/60 py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-8">
             <div className="text-center max-w-2xl mx-auto space-y-3 mb-16">
@@ -176,7 +170,7 @@ export default async function HomePage() {
                   เลือกสไตล์หรือส่งตัวอย่าง
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
-                  เลือกดูสไตล์จากเว็บนี้ หรือเตรียมรูปถ่ายของคุณตามคำแนะนำอินโฟกราฟิกด้านบน พร้อมบอกรายละเอียดที่ต้องการ
+                  เลือกดูสไตล์จากเว็บนี้ หรือเตรียมรูปถ่ายของคุณตามคำแนะนำด้านล่าง พร้อมบอกรายละเอียดที่ต้องการ
                 </p>
               </div>
 
@@ -207,7 +201,14 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* FAQ SECTION (DYNAMIC FROM DB, EDITABLE IN ADMIN) */}
+        {/* 4. PHOTO PREPARATION GUIDE (วางไว้ก่อนหน้าคำถามที่พบบ่อยตามคำขอ) */}
+        <section id="guide" className="border-t border-white/[0.08] py-20 bg-black/40">
+          <div className="mx-auto max-w-7xl px-4 sm:px-8">
+            <PhotoGuideSection />
+          </div>
+        </section>
+
+        {/* 5. FAQ SECTION (DYNAMIC FROM DB, EDITABLE IN ADMIN) */}
         <section id="faq" className="border-t border-white/[0.08] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-8">
             <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
@@ -226,8 +227,8 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* CONTACT SECTION WITH QR CODE */}
-        <section id="contact" className="border-t border-white/[0.08] py-20 bg-black/40">
+        {/* 6. CONTACT SECTION WITH QR CODE */}
+        <section id="contact" className="border-t border-white/[0.08] py-20 bg-black/50">
           <div className="mx-auto max-w-7xl px-4 sm:px-8">
             <LineContactCard />
           </div>
@@ -248,6 +249,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-6">
             <Link href="/galleries" className="hover:text-white transition-colors">รวมแคตตาล็อก</Link>
             <a href="#workflow" className="hover:text-white transition-colors">ขั้นตอนสั่งงาน</a>
+            <a href="#guide" className="hover:text-white transition-colors">วิธีส่งรูป</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
             <a href="https://line.me/ti/p/~tatchaihot" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
               แอดไลน์ทันที
