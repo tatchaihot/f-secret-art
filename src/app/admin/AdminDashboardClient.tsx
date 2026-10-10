@@ -22,10 +22,21 @@ import {
   Eye,
   X,
   Edit2,
-  Maximize2
+  Maximize2,
+  Play
 } from 'lucide-react';
 import { Album, Photo, Announcement, FaqItem } from '@/lib/db';
 import Lightbox from '@/components/Lightbox';
+
+interface StagedPhoto {
+  id: string;
+  file: File;
+  previewUrl: string;
+  size: number;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  progress: number;
+  error?: string;
+}
 
 interface AdminDashboardClientProps {
   initialAlbums: (Album & { photoCount?: number })[];
@@ -71,8 +82,8 @@ export default function AdminDashboardClient({
   const [targetAlbumId, setTargetAlbumId] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
 
-  // Uploading state
-  const [uploadQueue, setUploadQueue] = useState<{ name: string; progress: number; status: string }[]>([]);
+  // Staged Uploading state
+  const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -213,33 +224,67 @@ export default function AdminDashboardClient({
     }
   };
 
-  // Upload Photos Handler
-  const handleFilesSelected = async (files: FileList | null) => {
+  // Handle Files Selected (Stage them in queue first)
+  const handleFilesSelected = (files: FileList | null) => {
     if (!files || files.length === 0 || !selectedAlbumId) return;
 
-    setIsUploading(true);
-    const fileArray = Array.from(files);
+    const newFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    if (newFiles.length === 0) {
+      showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+      return;
+    }
 
-    const initialQueue = fileArray.map((f) => ({
-      name: f.name,
+    const newStaged: StagedPhoto[] = newFiles.map((file) => ({
+      id: 'stg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+      file,
+      previewUrl: URL.createObjectURL(file),
+      size: file.size,
+      status: 'pending',
       progress: 0,
-      status: 'รอคิวอัปโหลดและประมวลผล...',
     }));
-    setUploadQueue(initialQueue);
+
+    setStagedPhotos((prev) => [...prev, ...newStaged]);
+    showToast(`เพิ่ม ${newStaged.length} รูปลงในคิวแล้ว ตรวจสอบรูปแล้วกด "เริ่มอัปโหลด" ได้เลยครับ`);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Remove a single staged photo
+  const handleRemoveStagedPhoto = (id: string) => {
+    setStagedPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+
+  // Clear all staged photos
+  const handleClearStagedPhotos = () => {
+    stagedPhotos.forEach((p) => {
+      if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+    });
+    setStagedPhotos([]);
+  };
+
+  // Start uploading staged photos sequentially
+  const handleStartUpload = async () => {
+    if (stagedPhotos.length === 0 || !selectedAlbumId || isUploading) return;
+    setIsUploading(true);
 
     let successCount = 0;
+    const itemsToUpload = [...stagedPhotos];
 
-    for (let i = 0; i < fileArray.length; i++) {
-      const file = fileArray[i];
+    for (let i = 0; i < itemsToUpload.length; i++) {
+      const item = itemsToUpload[i];
+      if (item.status === 'success') continue;
 
-      setUploadQueue((prev) =>
-        prev.map((item, idx) =>
-          idx === i ? { ...item, progress: 40, status: 'กำลังแปลง WebP Thumbnail ด้วย Sharp...' } : item
-        )
+      setStagedPhotos((prev) =>
+        prev.map((p) => (p.id === item.id ? { ...p, status: 'uploading', progress: 40 } : p))
       );
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', item.file);
       formData.append('albumId', selectedAlbumId);
 
       try {
@@ -252,23 +297,17 @@ export default function AdminDashboardClient({
         if (data.success && data.photo) {
           successCount++;
           setCurrentPhotos((prev) => [data.photo, ...prev]);
-          setUploadQueue((prev) =>
-            prev.map((item, idx) =>
-              idx === i ? { ...item, progress: 100, status: 'สำเร็จ!' } : item
-            )
+          setStagedPhotos((prev) =>
+            prev.map((p) => (p.id === item.id ? { ...p, status: 'success', progress: 100 } : p))
           );
         } else {
-          setUploadQueue((prev) =>
-            prev.map((item, idx) =>
-              idx === i ? { ...item, progress: 100, status: 'เกิดข้อผิดพลาด' } : item
-            )
+          setStagedPhotos((prev) =>
+            prev.map((p) => (p.id === item.id ? { ...p, status: 'error', progress: 100, error: data.error } : p))
           );
         }
       } catch {
-        setUploadQueue((prev) =>
-          prev.map((item, idx) =>
-            idx === i ? { ...item, progress: 100, status: 'อัปโหลดล้มเหลว' } : item
-          )
+        setStagedPhotos((prev) =>
+          prev.map((p) => (p.id === item.id ? { ...p, status: 'error', progress: 100, error: 'เชื่อมต่อล้มเหลว' } : p))
         );
       }
     }
@@ -282,9 +321,12 @@ export default function AdminDashboardClient({
     );
 
     setIsUploading(false);
-    showToast(`อัปโหลดและสร้าง WebP สำเร็จแล้ว ${successCount} รูป!`);
-    setTimeout(() => setUploadQueue([]), 4000);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    showToast(`อัปโหลดขึ้น Cloudinary สำเร็จแล้ว ${successCount} รูป!`);
+
+    // Automatically remove successful items after 2.5 seconds
+    setTimeout(() => {
+      setStagedPhotos((prev) => prev.filter((p) => p.status !== 'success'));
+    }, 2500);
   };
 
   // Move Photos to another album
@@ -849,25 +891,108 @@ export default function AdminDashboardClient({
               </button>
             </div>
 
-            {/* Live Upload Queue Progress */}
-            {uploadQueue.length > 0 && (
-              <div className="rounded-xl border border-white/10 bg-zinc-950 p-4 space-y-3">
-                <h4 className="font-mono text-xs uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  สถานะการประมวลผลรูปภาพ ({uploadQueue.length} รูป)
-                </h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                  {uploadQueue.map((item, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-[11px] font-mono">
-                        <span className="truncate max-w-xs text-zinc-300">{item.name}</span>
-                        <span className="text-zinc-400">{item.status}</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 transition-all duration-300"
-                          style={{ width: `${item.progress}%` }}
+            {/* STAGED PHOTOS TRAY (รายการรูปที่รออัปโหลด) */}
+            {stagedPhotos.length > 0 && (
+              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/[0.04] p-5 sm:p-6 space-y-4 shadow-2xl animate-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                  <div>
+                    <h4 className="font-serif text-base sm:text-lg font-medium text-white flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/20 text-purple-300 text-xs font-mono font-bold">
+                        {stagedPhotos.length}
+                      </span>
+                      <span>คิวรูปภาพที่เลือกไว้ (รอการยืนยันอัปโหลด)</span>
+                    </h4>
+                    <p className="text-xs font-mono text-zinc-400 mt-1">
+                      ขนาดรวม:{' '}
+                      {(
+                        stagedPhotos.reduce((acc, curr) => acc + curr.size, 0) /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{' '}
+                      MB · สามารถกด [×] บนรูปเพื่อเอาออก หรือกดเลือกไฟล์เพิ่มได้
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={handleClearStagedPhotos}
+                      className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-50 px-3.5 py-2 text-xs font-mono text-zinc-400 hover:text-white transition-colors"
+                    >
+                      ล้างคิวทั้งหมด
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isUploading || stagedPhotos.every((p) => p.status === 'success')}
+                      onClick={handleStartUpload}
+                      className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 px-5 py-2 text-xs font-mono uppercase tracking-wider text-white font-bold transition-all shadow-lg shadow-purple-500/25 hover:scale-105"
+                    >
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      <span>{isUploading ? 'กำลังอัปโหลด...' : `🚀 เริ่มอัปโหลด (${stagedPhotos.length} รูป)`}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Staged Thumbnails Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-80 overflow-y-auto pr-1">
+                  {stagedPhotos.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group relative rounded-xl overflow-hidden border border-white/10 bg-zinc-950/80 shadow-md"
+                    >
+                      <div className="relative aspect-square w-full">
+                        <img
+                          src={item.previewUrl}
+                          alt={item.file.name}
+                          className="h-full w-full object-cover"
                         />
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-transparent transition-colors" />
+
+                        {/* Status Overlay */}
+                        {item.status === 'uploading' && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-2 text-center">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-400 border-t-transparent mb-1" />
+                            <span className="text-[10px] font-mono text-purple-300">กำลังส่ง...</span>
+                          </div>
+                        )}
+
+                        {item.status === 'success' && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-950/85 p-2 text-center">
+                            <CheckCircle2 className="h-6 w-6 text-emerald-400 mb-1" />
+                            <span className="text-[10px] font-mono text-emerald-300">สำเร็จ!</span>
+                          </div>
+                        )}
+
+                        {item.status === 'error' && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-rose-950/85 p-2 text-center">
+                            <AlertCircle className="h-6 w-6 text-rose-400 mb-1" />
+                            <span className="text-[10px] font-mono text-rose-300">ล้มเหลว</span>
+                          </div>
+                        )}
+
+                        {/* Remove button (only if not uploading) */}
+                        {!isUploading && item.status !== 'success' && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStagedPhoto(item.id)}
+                            className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 hover:bg-rose-600 text-zinc-300 hover:text-white transition-all shadow-md"
+                            title="ลบรูปนี้ออกจากคิว"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* File Info */}
+                      <div className="p-2 text-[10px] font-mono text-zinc-400 truncate">
+                        <p className="truncate text-zinc-200" title={item.file.name}>
+                          {item.file.name}
+                        </p>
+                        <span className="text-zinc-500">
+                          {(item.size / 1024).toFixed(0)} KB
+                        </span>
                       </div>
                     </div>
                   ))}
