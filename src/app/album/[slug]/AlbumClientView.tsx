@@ -145,15 +145,15 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+    <div className="mx-auto max-w-7xl px-3 py-6 sm:px-8 sm:py-12">
       {/* Top Navigation & Breadcrumb */}
-      <div className="flex items-center justify-between pb-6 border-b border-white/[0.08]">
+      <div className="flex items-center justify-between pb-4 sm:pb-6 border-b border-white/[0.08]">
         <Link
-          href="/"
-          className="group inline-flex items-center gap-2 font-mono text-xs text-zinc-400 hover:text-white transition-colors"
+          href="/galleries"
+          className="group inline-flex items-center gap-1.5 sm:gap-2 font-mono text-xs text-zinc-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5 transform transition-transform group-hover:-translate-x-1" />
-          <span>All Galleries</span>
+          <span>รวมแคตตาล็อกสไตล์</span>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -245,12 +245,12 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           </button>
         </div>
 
-        <span className="font-mono text-[11px] text-zinc-500 hidden sm:inline">
-          Tap photo for fullscreen view
+        <span className="font-mono text-[11px] text-zinc-400">
+          แตะรูปเพื่อดูเต็มจอ
         </span>
       </div>
 
-      {/* Dynamic Fluid Masonry Grid (Preserves natural portrait/landscape ratio without cropping) */}
+      {/* 2-Column Mobile Grid for easy browsing & instant fullscreen lightbox */}
       {displayedPhotos.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 p-16 text-center">
           <Heart className="h-10 w-10 text-zinc-600 mb-3" />
@@ -261,7 +261,7 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           </p>
         </div>
       ) : (
-        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3.5 md:gap-4">
           {displayedPhotos.map((photo, index) => (
             <ImageCard
               key={photo.id}

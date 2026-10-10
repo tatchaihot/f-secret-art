@@ -49,17 +49,32 @@ export default function Navbar() {
         </div>
 
         {/* Direct Action Buttons & Mobile Hamburger */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick Line Contact CTA */}
+        <div className="flex items-center gap-1 sm:gap-3">
+          {/* Quick links on mobile: Gallery & Contact */}
+          <Link
+            href="/galleries"
+            className="md:hidden text-xs font-mono text-zinc-300 hover:text-white px-2 py-1 transition-colors"
+          >
+            Gallery
+          </Link>
           <a
             href="https://line.me/ti/p/~tatchaihot"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] text-white px-3.5 py-1.5 text-xs font-mono tracking-wider font-semibold transition-all shadow-lg shadow-[#06C755]/20 hover:scale-105"
+            className="md:hidden text-xs font-mono text-zinc-300 hover:text-white px-2 py-1 transition-colors"
+          >
+            ติดต่อ
+          </a>
+
+          {/* Quick Line Contact CTA for larger screens */}
+          <a
+            href="https://line.me/ti/p/~tatchaihot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] text-white px-3.5 py-1.5 text-xs font-mono tracking-wider font-semibold transition-all shadow-lg shadow-[#06C755]/20 hover:scale-105"
           >
             <MessageCircle className="h-3.5 w-3.5 fill-current" />
-            <span className="hidden xs:inline">ทัก LINE สั่งงาน</span>
-            <span className="xs:hidden">LINE</span>
+            <span>ทัก LINE สั่งงาน</span>
           </a>
 
           {/* Admin Portal Shortcut */}
