@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createPhoto, deletePhotos } from '@/lib/db';
-import { processUploadedImage } from '@/lib/image-processor';
-
+import { createPhoto, deletePhotos, db } from '@/lib/db';
+import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
 
 export async function POST(req: Request) {
   try {
@@ -19,8 +18,8 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Process image: generate originals, webp previews, thumbs, and LQIP
-    const processed = await processUploadedImage(buffer, file.name);
+    // Process image: Upload to Cloudinary (or local fallback) with smart adaptive optimization
+    const processed = await processUploadedImage(buffer, file.name, `f-secret-art/album-${albumId}`);
 
     // Save record to SQLite
     const photo = createPhoto({
@@ -53,6 +52,15 @@ export async function DELETE(req: Request) {
         { success: false, error: 'photoIds array is required' },
         { status: 400 }
       );
+    }
+
+    // Cleanup from Cloudinary if remote
+    const placeholders = photoIds.map(() => '?').join(',');
+    const photosToDelete = db.prepare(`SELECT filename, originalUrl FROM photos WHERE id IN (${placeholders})`).all(...photoIds) as Array<{ filename: string; originalUrl: string }>;
+    for (const p of photosToDelete) {
+      if (p.filename?.startsWith('f-secret-art') || p.originalUrl?.includes('cloudinary.com')) {
+        await deleteRemoteImage(p.filename || p.originalUrl);
+      }
     }
 
     const count = deletePhotos(photoIds);

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getAllAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from '@/lib/db';
-import { processUploadedImage } from '@/lib/image-processor';
+import { getAllAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, db } from '@/lib/db';
+import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
 
 export async function GET() {
   try {
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       if (file && file.size > 0) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        const processed = await processUploadedImage(buffer, file.name);
+        const processed = await processUploadedImage(buffer, file.name, 'f-secret-art/announcements');
         imageUrl = processed.previewUrl;
       }
 
@@ -90,6 +90,11 @@ export async function DELETE(req: Request) {
     const { id } = await req.json();
     if (!id) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
+    }
+
+    const ann = db.prepare('SELECT imageUrl FROM announcements WHERE id = ?').get(id) as { imageUrl: string | null } | undefined;
+    if (ann?.imageUrl && (ann.imageUrl.includes('cloudinary.com') || ann.imageUrl.startsWith('f-secret-art'))) {
+      await deleteRemoteImage(ann.imageUrl);
     }
 
     const ok = deleteAnnouncement(id);
