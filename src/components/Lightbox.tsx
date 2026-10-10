@@ -1,0 +1,247 @@
+'use client';
+
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { X, ChevronLeft, ChevronRight, Download, Heart, ZoomIn, ZoomOut } from 'lucide-react';
+import { Photo } from '@/lib/db';
+
+interface LightboxProps {
+  photos: Photo[];
+  currentIndex: number;
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (index: number) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (id: string) => void;
+}
+
+export default function Lightbox({
+  photos,
+  currentIndex,
+  isOpen,
+  onClose,
+  onNavigate,
+  isFavorite = false,
+  onToggleFavorite,
+}: LightboxProps) {
+  const currentPhoto = photos[currentIndex];
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchDelta, setTouchDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < photos.length - 1) {
+      setImgLoaded(false);
+      setIsZoomed(false);
+      onNavigate(currentIndex + 1);
+    }
+  }, [currentIndex, photos.length, onNavigate]);
+
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) {
+      setImgLoaded(false);
+      setIsZoomed(false);
+      onNavigate(currentIndex - 1);
+    }
+  }, [currentIndex, onNavigate]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') handleNext();
+      if (e.key === 'ArrowLeft') handlePrev();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose, handleNext, handlePrev]);
+
+  // Touch gesture handling (Swipe left/right to navigate, swipe down to dismiss)
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (isZoomed) return;
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    setTouchDelta({ x: 0, y: 0 });
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart || isZoomed) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    setTouchDelta({
+      x: currentX - touchStart.x,
+      y: currentY - touchStart.y,
+    });
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || isZoomed) return;
+
+    const minSwipeDistance = 50;
+    const { x, y } = touchDelta;
+
+    // Vertical swipe down to close
+    if (y > 100 && Math.abs(x) < 80) {
+      onClose();
+    }
+    // Horizontal swipe for next/prev
+    else if (x < -minSwipeDistance && Math.abs(y) < 100) {
+      handleNext();
+    } else if (x > minSwipeDistance && Math.abs(y) < 100) {
+      handlePrev();
+    }
+
+    setTouchStart(null);
+    setTouchDelta({ x: 0, y: 0 });
+  };
+
+  if (!isOpen || !currentPhoto) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl transition-all duration-300 select-none animate-fade-in"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Top Header Controls Bar */}
+      <div className="absolute top-0 inset-x-0 z-50 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto">
+        {/* Photo Counter */}
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs sm:text-sm tracking-widest text-zinc-400">
+            <span className="text-white font-medium">
+              {String(currentIndex + 1).padStart(2, '0')}
+            </span>
+            {' / '}
+            {String(photos.length).padStart(2, '0')}
+          </span>
+          <span className="hidden sm:inline-block h-3 w-[1px] bg-zinc-700" />
+          <span className="hidden sm:inline-block font-mono text-xs text-zinc-400 truncate max-w-xs">
+            {currentPhoto.originalName}
+          </span>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Zoom Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsZoomed(!isZoomed)}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors"
+            title={isZoomed ? 'Zoom out' : 'Zoom in'}
+          >
+            {isZoomed ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
+          </button>
+
+          {/* Favorite Button */}
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={() => onToggleFavorite(currentPhoto.id)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all ${
+                isFavorite
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40'
+                  : 'bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white'
+              }`}
+              title={isFavorite ? 'Remove favorite' : 'Add to favorites'}
+            >
+              <Heart className={`h-4 w-4 ${isFavorite ? 'fill-white' : ''}`} />
+            </button>
+          )}
+
+          {/* Download Original Photo */}
+          <a
+            href={currentPhoto.originalUrl}
+            download={currentPhoto.originalName}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors"
+            title="Download full-resolution photo"
+          >
+            <Download className="h-4 w-4" />
+          </a>
+
+          {/* Close Button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors ml-2"
+            title="Close (Esc)"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Image Display Area */}
+      <div
+        className="relative flex h-full w-full items-center justify-center p-2 sm:p-8 overflow-hidden"
+        style={{
+          transform: !isZoomed ? `translate(${touchDelta.x * 0.3}px, ${touchDelta.y * 0.5}px)` : 'none',
+          transition: touchStart ? 'none' : 'transform 0.3s ease-out',
+        }}
+      >
+        {/* Placeholder / Blur background while high-res loads */}
+        {currentPhoto.blurDataUrl && !imgLoaded && (
+          <img
+            src={currentPhoto.blurDataUrl}
+            alt=""
+            className="absolute max-h-[90vh] max-w-[90vw] object-contain filter blur-md opacity-40"
+          />
+        )}
+
+        <img
+          key={currentPhoto.id}
+          src={currentPhoto.previewUrl || currentPhoto.originalUrl}
+          alt={currentPhoto.originalName}
+          onLoad={() => setImgLoaded(true)}
+          className={`max-h-[85vh] max-w-[95vw] sm:max-h-[90vh] sm:max-w-[85vw] object-contain transition-all duration-300 select-none ${
+            isZoomed ? 'scale-150 cursor-grab' : 'scale-100'
+          } ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          draggable={false}
+        />
+      </div>
+
+      {/* Navigation Buttons (Desktop & Tablet) */}
+      {currentIndex > 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrev();
+          }}
+          className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105"
+          title="Previous photo (Arrow Left)"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
+
+      {currentIndex < photos.length - 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNext();
+          }}
+          className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105"
+          title="Next photo (Arrow Right)"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Mobile Swipe Guidance Indicator */}
+      <div className="sm:hidden absolute bottom-4 inset-x-0 text-center pointer-events-none">
+        <span className="text-[11px] font-mono tracking-widest text-zinc-400 bg-black/60 px-3 py-1 rounded-full border border-white/10">
+          Swipe left/right to browse · Swipe down to exit
+        </span>
+      </div>
+    </div>
+  );
+}
