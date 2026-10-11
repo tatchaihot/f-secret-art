@@ -22,6 +22,7 @@ export interface Album {
   createdAt: string;
   updatedAt: string;
   photoCount?: number;
+  previewPhotos?: string[];
 }
 
 export interface Photo {
@@ -145,7 +146,47 @@ export async function getAllAlbums(): Promise<Album[]> {
     GROUP BY a.id
     ORDER BY a.sortOrder ASC, a.createdAt DESC
   `);
-  return toPlainRows<Album>(res.rows);
+  const albums = toPlainRows<Album>(res.rows);
+
+  // Fetch top 4 preview photos for each album for the 4-photo collage covers
+  try {
+    const previewRes = await db.execute(`
+      SELECT albumId, thumbUrl, previewUrl, originalUrl
+      FROM (
+        SELECT albumId, thumbUrl, previewUrl, originalUrl,
+               ROW_NUMBER() OVER (PARTITION BY albumId ORDER BY sortOrder ASC, createdAt DESC) as rn
+        FROM photos
+      )
+      WHERE rn <= 4
+    `);
+    const previewRows = toPlainRows<{ albumId: string; thumbUrl: string; previewUrl: string; originalUrl: string }>(previewRes.rows);
+
+    const map = new Map<string, string[]>();
+    for (const row of previewRows) {
+      const url = row.thumbUrl || row.previewUrl || row.originalUrl;
+      if (!url) continue;
+      if (!map.has(row.albumId)) {
+        map.set(row.albumId, []);
+      }
+      map.get(row.albumId)!.push(url);
+    }
+
+    for (const album of albums) {
+      const list = map.get(album.id) || [];
+      if (album.coverImage && !list.includes(album.coverImage)) {
+        album.previewPhotos = [album.coverImage, ...list].slice(0, 4);
+      } else {
+        album.previewPhotos = list.slice(0, 4);
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching preview photos for albums:', err);
+    for (const album of albums) {
+      album.previewPhotos = album.coverImage ? [album.coverImage] : [];
+    }
+  }
+
+  return albums;
 }
 
 export async function getAlbumBySlug(slug: string): Promise<(Album & { photos: Photo[] }) | null> {

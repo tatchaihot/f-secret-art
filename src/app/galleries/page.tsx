@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllAlbums } from '@/lib/db';
 import Navbar from '@/components/Navbar';
+import AlbumCoverGrid from '@/components/AlbumCoverGrid';
 import { ArrowLeft, ArrowRight, Images, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 
@@ -52,31 +53,18 @@ export default async function GalleriesPage() {
         {/* Full Grid of Albums */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((album) => {
-            const cover = album.coverImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';
-
             return (
               <Link
                 key={album.id}
                 href={`/album/${album.slug}`}
                 className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-orange-500/15"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-950">
-                  <Image
-                    src={cover}
-                    alt={album.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b0a0d] via-black/30 to-transparent" />
-
-                  <div className="absolute top-3.5 right-3.5">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b0a0d]/80 backdrop-blur-md px-3 py-1 text-xs font-mono text-amber-200 border border-amber-500/30 shadow-md">
-                      <Images className="h-3.5 w-3.5 text-amber-400" />
-                      {album.photoCount || 0} ตัวอย่าง
-                    </span>
-                  </div>
-                </div>
+                <AlbumCoverGrid
+                  previewPhotos={album.previewPhotos}
+                  coverImage={album.coverImage}
+                  title={album.title}
+                  photoCount={album.photoCount || 0}
+                />
 
                 <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
                   <div>
