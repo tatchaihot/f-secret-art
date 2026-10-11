@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getAlbumById, updateAlbum, deleteAlbum } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
@@ -32,6 +33,13 @@ export async function PUT(
     if (!updated) {
       return NextResponse.json({ success: false, error: 'Album not found' }, { status: 404 });
     }
+
+    revalidatePath('/galleries');
+    revalidatePath('/');
+    if (updated.slug) {
+      revalidatePath(`/album/${updated.slug}`);
+    }
+
     return NextResponse.json({ success: true, album: updated });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -51,6 +59,10 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Album not found or already deleted' }, { status: 404 });
     }
+
+    revalidatePath('/galleries');
+    revalidatePath('/');
+
     return NextResponse.json({ success: true, message: 'Album deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

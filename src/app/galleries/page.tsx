@@ -6,7 +6,7 @@ import AlbumCoverGrid from '@/components/AlbumCoverGrid';
 import { ArrowLeft, ArrowRight, Images, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'รวมแคตตาล็อกสไตล์ภาพ AI ทั้งหมด — F-Secret AI Art',
@@ -52,7 +52,7 @@ export default async function GalleriesPage() {
 
         {/* Full Grid of Albums */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {albums.map((album) => {
+          {albums.map((album, idx) => {
             return (
               <Link
                 key={album.id}
@@ -64,6 +64,7 @@ export default async function GalleriesPage() {
                   coverImage={album.coverImage}
                   title={album.title}
                   photoCount={album.photoCount || 0}
+                  priority={idx < 3}
                 />
 
                 <div className="flex flex-1 flex-col justify-between p-6 space-y-4">

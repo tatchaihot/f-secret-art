@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getAllAlbums, createAlbum } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
@@ -26,6 +27,9 @@ export async function POST(req: Request) {
       description: body.description?.trim(),
       sortOrder: Number(body.sortOrder) || 0,
     });
+
+    revalidatePath('/galleries');
+    revalidatePath('/');
 
     return NextResponse.json({ success: true, album });
   } catch (error: any) {

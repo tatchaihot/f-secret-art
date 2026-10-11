@@ -1,20 +1,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllAlbums, getActiveAnnouncements, getAllFaqs, seedSampleData } from '@/lib/db';
+import { getAllAlbums, getActiveAnnouncements, getAllFaqs } from '@/lib/db';
 import Navbar from '@/components/Navbar';
 import AlbumCoverGrid from '@/components/AlbumCoverGrid';
 import { HeroActions, LineContactCard, FaqSection, AnnouncementNewsSection, PhotoGuideSection } from '@/components/HomeClientSections';
 import { Sparkles, ArrowRight, Images, Layers } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function HomePage() {
-  try {
-    await seedSampleData();
-  } catch (e) {
-    // Ignore seed check note
-  }
-
   const allAlbums = await getAllAlbums();
   const featuredAlbums = allAlbums.slice(0, 3);
   const announcements = await getActiveAnnouncements();
@@ -84,7 +78,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredAlbums.map((album) => {
+            {featuredAlbums.map((album, idx) => {
               return (
                 <Link
                   key={album.id}
@@ -96,6 +90,7 @@ export default async function HomePage() {
                     coverImage={album.coverImage}
                     title={album.title}
                     photoCount={album.photoCount || 0}
+                    priority={idx < 3}
                   />
 
                   <div className="flex flex-1 flex-col justify-between p-6 space-y-4">

@@ -6,16 +6,33 @@ interface AlbumCoverGridProps {
   coverImage?: string | null;
   title: string;
   photoCount?: number;
+  priority?: boolean;
 }
 
 const DEFAULT_COVER =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';
+
+/**
+ * Generates lightweight edge-transformed Cloudinary thumbnail URLs.
+ * Keeps payload ~14KB per image instead of 5-8MB, bypassing Next.js server proxy.
+ */
+function getOptimizedThumb(url: string, width = 360, height = 270): string {
+  if (!url) return '';
+  if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+    if (url.includes('/upload/c_') || url.includes('/upload/w_')) {
+      return url.replace(/\/upload\/(?:c_[^/]+|w_[^/]+)[^/]*\//, `/upload/c_fill,w_${width},h_${height},g_auto,q_auto:eco,f_auto/`);
+    }
+    return url.replace('/image/upload/', `/image/upload/c_fill,w_${width},h_${height},g_auto,q_auto:eco,f_auto/`);
+  }
+  return url;
+}
 
 export default function AlbumCoverGrid({
   previewPhotos = [],
   coverImage,
   title,
   photoCount = 0,
+  priority = false,
 }: AlbumCoverGridProps) {
   // Build a distinct list of photos
   const rawList = [...previewPhotos];
@@ -33,9 +50,12 @@ export default function AlbumCoverGrid({
           {photos.map((url, i) => (
             <div key={i} className="relative h-full w-full overflow-hidden bg-stone-900">
               <Image
-                src={url}
+                src={getOptimizedThumb(url, 360, 270)}
                 alt={`${title} ตัวอย่างที่ ${i + 1}`}
                 fill
+                unoptimized
+                priority={priority && i < 2}
+                loading={priority && i < 2 ? 'eager' : 'lazy'}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 17vw"
                 className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
               />
@@ -47,27 +67,36 @@ export default function AlbumCoverGrid({
         <div className="grid grid-cols-2 grid-rows-2 h-full w-full gap-[2px] bg-[#0b0a0d]">
           <div className="row-span-2 relative h-full w-full overflow-hidden bg-stone-900">
             <Image
-              src={photos[0]}
+              src={getOptimizedThumb(photos[0], 480, 540)}
               alt={`${title} ตัวอย่างที่ 1`}
               fill
+              unoptimized
+              priority={priority}
+              loading={priority ? 'eager' : 'lazy'}
               sizes="(max-width: 640px) 60vw, (max-width: 1024px) 30vw, 20vw"
               className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
             />
           </div>
           <div className="col-start-2 row-start-1 relative h-full w-full overflow-hidden bg-stone-900">
             <Image
-              src={photos[1]}
+              src={getOptimizedThumb(photos[1], 360, 270)}
               alt={`${title} ตัวอย่างที่ 2`}
               fill
+              unoptimized
+              priority={priority}
+              loading={priority ? 'eager' : 'lazy'}
               sizes="(max-width: 640px) 40vw, (max-width: 1024px) 20vw, 15vw"
               className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
             />
           </div>
           <div className="col-start-2 row-start-2 relative h-full w-full overflow-hidden bg-stone-900">
             <Image
-              src={photos[2]}
+              src={getOptimizedThumb(photos[2], 360, 270)}
               alt={`${title} ตัวอย่างที่ 3`}
               fill
+              unoptimized
+              priority={false}
+              loading="lazy"
               sizes="(max-width: 640px) 40vw, (max-width: 1024px) 20vw, 15vw"
               className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
             />
@@ -79,9 +108,12 @@ export default function AlbumCoverGrid({
           {photos.map((url, i) => (
             <div key={i} className="relative h-full w-full overflow-hidden bg-stone-900">
               <Image
-                src={url}
+                src={getOptimizedThumb(url, 360, 540)}
                 alt={`${title} ตัวอย่างที่ ${i + 1}`}
                 fill
+                unoptimized
+                priority={priority}
+                loading={priority ? 'eager' : 'lazy'}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 17vw"
                 className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
               />
@@ -92,9 +124,12 @@ export default function AlbumCoverGrid({
         /* Single Photo Full Cover */
         <div className="relative h-full w-full overflow-hidden bg-stone-900">
           <Image
-            src={photos[0]}
+            src={getOptimizedThumb(photos[0], 640, 480)}
             alt={title}
             fill
+            unoptimized
+            priority={priority}
+            loading={priority ? 'eager' : 'lazy'}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />

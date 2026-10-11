@@ -124,6 +124,17 @@ export async function ensureDbInitialized() {
     );
   `);
 
+  // Performance Indexes for instant querying and sorting
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_photos_albumId ON photos(albumId);
+  `);
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_photos_album_sort ON photos(albumId, sortOrder ASC, createdAt DESC);
+  `);
+  await db.execute(`
+    CREATE INDEX IF NOT EXISTS idx_albums_sort ON albums(sortOrder ASC, createdAt DESC);
+  `);
+
   isInitialized = true;
 }
 
@@ -139,26 +150,34 @@ function toPlainRow<T>(row: any): T {
 // ----------------- ALBUM QUERIES -----------------
 export async function getAllAlbums(): Promise<Album[]> {
   await ensureDbInitialized();
-  const res = await db.execute(`
-    SELECT a.*, COUNT(p.id) as photoCount
-    FROM albums a
-    LEFT JOIN photos p ON a.id = p.albumId
-    GROUP BY a.id
-    ORDER BY a.sortOrder ASC, a.createdAt DESC
-  `);
-  const albums = toPlainRows<Album>(res.rows);
-
-  // Fetch top 4 preview photos for each album for the 4-photo collage covers
   try {
-    const previewRes = await db.execute(`
-      SELECT albumId, thumbUrl, previewUrl, originalUrl
-      FROM (
-        SELECT albumId, thumbUrl, previewUrl, originalUrl,
-               ROW_NUMBER() OVER (PARTITION BY albumId ORDER BY sortOrder ASC, createdAt DESC) as rn
-        FROM photos
-      )
-      WHERE rn <= 4
-    `);
+    // Combine both album list and top 4 preview photos into a SINGLE network round trip
+    const [albumRes, previewRes] = await db.batch([
+      {
+        sql: `
+          SELECT a.*, COUNT(p.id) as photoCount
+          FROM albums a
+          LEFT JOIN photos p ON a.id = p.albumId
+          GROUP BY a.id
+          ORDER BY a.sortOrder ASC, a.createdAt DESC
+        `,
+        args: [],
+      },
+      {
+        sql: `
+          SELECT albumId, thumbUrl, previewUrl, originalUrl
+          FROM (
+            SELECT albumId, thumbUrl, previewUrl, originalUrl,
+                   ROW_NUMBER() OVER (PARTITION BY albumId ORDER BY sortOrder ASC, createdAt DESC) as rn
+            FROM photos
+          )
+          WHERE rn <= 4
+        `,
+        args: [],
+      },
+    ]);
+
+    const albums = toPlainRows<Album>(albumRes.rows);
     const previewRows = toPlainRows<{ albumId: string; thumbUrl: string; previewUrl: string; originalUrl: string }>(previewRes.rows);
 
     const map = new Map<string, string[]>();
@@ -179,14 +198,24 @@ export async function getAllAlbums(): Promise<Album[]> {
         album.previewPhotos = list.slice(0, 4);
       }
     }
+
+    return albums;
   } catch (err) {
-    console.error('Error fetching preview photos for albums:', err);
+    console.error('Error in getAllAlbums batch query:', err);
+    // Fallback: single query
+    const res = await db.execute(`
+      SELECT a.*, COUNT(p.id) as photoCount
+      FROM albums a
+      LEFT JOIN photos p ON a.id = p.albumId
+      GROUP BY a.id
+      ORDER BY a.sortOrder ASC, a.createdAt DESC
+    `);
+    const albums = toPlainRows<Album>(res.rows);
     for (const album of albums) {
       album.previewPhotos = album.coverImage ? [album.coverImage] : [];
     }
+    return albums;
   }
-
-  return albums;
 }
 
 export async function getAlbumBySlug(slug: string): Promise<(Album & { photos: Photo[] }) | null> {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { setAlbumCover } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 
@@ -18,6 +19,10 @@ export async function POST(req: Request) {
     }
 
     const ok = await setAlbumCover(albumId, photoThumbUrl);
+
+    revalidatePath('/galleries');
+    revalidatePath('/');
+
     return NextResponse.json({ success: ok });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

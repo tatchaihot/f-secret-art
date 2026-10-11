@@ -13,6 +13,17 @@ interface ImageCardProps {
   onToggleFavorite?: (id: string) => void;
 }
 
+function getOptimizedPhotoUrl(url: string, width = 600, height = 900): string {
+  if (!url) return '';
+  if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+    if (url.includes('/upload/c_') || url.includes('/upload/w_')) {
+      return url.replace(/\/upload\/(?:c_[^/]+|w_[^/]+)[^/]*\//, `/upload/c_limit,w_${width},h_${height},q_auto:eco,f_auto/`);
+    }
+    return url.replace('/image/upload/', `/image/upload/c_limit,w_${width},h_${height},q_auto:eco,f_auto/`);
+  }
+  return url;
+}
+
 export default function ImageCard({
   photo,
   index,
@@ -22,6 +33,9 @@ export default function ImageCard({
 }: ImageCardProps) {
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  const rawUrl = photo.thumbUrl || photo.previewUrl || photo.originalUrl;
+  const optimizedSrc = getOptimizedPhotoUrl(rawUrl, 600, 900);
 
   return (
     <div
@@ -47,9 +61,10 @@ export default function ImageCard({
           </div>
         ) : (
           <Image
-            src={photo.thumbUrl || photo.previewUrl || photo.originalUrl}
+            src={optimizedSrc}
             alt={photo.originalName || 'Gallery Photo'}
             fill
+            unoptimized
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             loading={index < 6 ? 'eager' : 'lazy'}
             priority={index < 2}
