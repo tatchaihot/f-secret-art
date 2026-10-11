@@ -126,6 +126,15 @@ export async function ensureDbInitialized() {
   isInitialized = true;
 }
 
+// Helper to ensure database rows are clean, plain JS objects across React Server Component boundaries
+function toPlainRows<T>(rows: any[]): T[] {
+  return rows.map((r) => ({ ...r })) as T[];
+}
+
+function toPlainRow<T>(row: any): T {
+  return { ...row } as T;
+}
+
 // ----------------- ALBUM QUERIES -----------------
 export async function getAllAlbums(): Promise<Album[]> {
   await ensureDbInitialized();
@@ -136,7 +145,7 @@ export async function getAllAlbums(): Promise<Album[]> {
     GROUP BY a.id
     ORDER BY a.sortOrder ASC, a.createdAt DESC
   `);
-  return res.rows as unknown as Album[];
+  return toPlainRows<Album>(res.rows);
 }
 
 export async function getAlbumBySlug(slug: string): Promise<(Album & { photos: Photo[] }) | null> {
@@ -147,14 +156,14 @@ export async function getAlbumBySlug(slug: string): Promise<(Album & { photos: P
   });
 
   if (albumRes.rows.length === 0) return null;
-  const album = albumRes.rows[0] as unknown as Album;
+  const album = toPlainRow<Album>(albumRes.rows[0]);
 
   const photosRes = await db.execute({
     sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
     args: [album.id],
   });
 
-  const photos = photosRes.rows as unknown as Photo[];
+  const photos = toPlainRows<Photo>(photosRes.rows);
   return { ...album, photos };
 }
 
@@ -166,14 +175,14 @@ export async function getAlbumById(id: string): Promise<(Album & { photos: Photo
   });
 
   if (albumRes.rows.length === 0) return null;
-  const album = albumRes.rows[0] as unknown as Album;
+  const album = toPlainRow<Album>(albumRes.rows[0]);
 
   const photosRes = await db.execute({
     sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
     args: [id],
   });
 
-  const photos = photosRes.rows as unknown as Photo[];
+  const photos = toPlainRows<Photo>(photosRes.rows);
   return { ...album, photos };
 }
 
@@ -372,13 +381,13 @@ export async function setAlbumCover(albumId: string, photoThumbUrl: string): Pro
 export async function getAllAnnouncements(): Promise<Announcement[]> {
   await ensureDbInitialized();
   const res = await db.execute('SELECT * FROM announcements ORDER BY sortOrder ASC, createdAt DESC');
-  return res.rows as unknown as Announcement[];
+  return toPlainRows<Announcement>(res.rows);
 }
 
 export async function getActiveAnnouncements(): Promise<Announcement[]> {
   await ensureDbInitialized();
   const res = await db.execute('SELECT * FROM announcements WHERE isActive = 1 ORDER BY sortOrder ASC, createdAt DESC');
-  return res.rows as unknown as Announcement[];
+  return toPlainRows<Announcement>(res.rows);
 }
 
 export async function getAnnouncementById(id: string): Promise<Announcement | null> {
@@ -388,7 +397,7 @@ export async function getAnnouncementById(id: string): Promise<Announcement | nu
     args: [id],
   });
   if (res.rows.length === 0) return null;
-  return res.rows[0] as unknown as Announcement;
+  return toPlainRow<Announcement>(res.rows[0]);
 }
 
 export async function createAnnouncement(data: {
@@ -458,7 +467,7 @@ export async function deleteAnnouncement(id: string): Promise<boolean> {
 export async function getAllFaqs(): Promise<FaqItem[]> {
   await ensureDbInitialized();
   const res = await db.execute('SELECT * FROM faqs ORDER BY sortOrder ASC, createdAt ASC');
-  return res.rows as unknown as FaqItem[];
+  return toPlainRows<FaqItem>(res.rows);
 }
 
 export async function getFaqById(id: string): Promise<FaqItem | null> {
@@ -468,7 +477,7 @@ export async function getFaqById(id: string): Promise<FaqItem | null> {
     args: [id],
   });
   if (res.rows.length === 0) return null;
-  return res.rows[0] as unknown as FaqItem;
+  return toPlainRow<FaqItem>(res.rows[0]);
 }
 
 export async function createFaq(data: {
