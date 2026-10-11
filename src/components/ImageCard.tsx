@@ -25,11 +25,11 @@ export default function ImageCard({
 
   return (
     <div
-      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-zinc-900 border border-white/[0.06] transition-all hover:border-amber-500/40 hover:shadow-xl hover:shadow-orange-500/10 cursor-pointer select-none active:scale-[0.98]"
+      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-[#141014] border border-amber-500/15 transition-all hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/15 cursor-pointer select-none active:scale-[0.98]"
       onClick={onClick}
     >
       {/* 2:3 Aspect ratio portrait card (Uniform & elegant, matching mobile 2-column view) */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-950">
+      <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#0e0c0f]">
         {/* Progressive Blur Placeholder */}
         {photo.blurDataUrl && !loaded && !hasError && (
           <img
@@ -41,8 +41,8 @@ export default function ImageCard({
         )}
 
         {hasError ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 p-4 text-center text-zinc-500">
-            <AlertCircle className="h-6 w-6 text-zinc-600 mb-1" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0e0c0f] p-4 text-center text-stone-500">
+            <AlertCircle className="h-6 w-6 text-stone-600 mb-1" />
             <span className="text-[10px] font-mono">รูปภาพไม่พร้อมใช้งาน</span>
           </div>
         ) : (
@@ -62,7 +62,7 @@ export default function ImageCard({
         )}
 
         {/* Hover / Touch Vignette Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0a0d]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
 
         {/* Favorite Heart Button (Discreet, compact, doesn't block portrait) */}
         {onToggleFavorite && (
@@ -74,8 +74,8 @@ export default function ImageCard({
             }}
             className={`absolute top-2 right-2 z-10 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md active:scale-90 ${
               isFavorite
-                ? 'bg-rose-500 text-white shadow-rose-500/40 opacity-100'
-                : 'bg-black/50 text-white/80 hover:bg-black/80 hover:text-white border border-white/10 opacity-0 group-hover:opacity-100'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-rose-500/40 opacity-100'
+                : 'bg-black/60 text-stone-200 hover:bg-black/90 hover:text-white border border-amber-500/25 opacity-0 group-hover:opacity-100'
             }`}
             title={isFavorite ? 'ลบออกจากรายการโปรด' : 'บันทึกรูปที่ชอบ'}
           >

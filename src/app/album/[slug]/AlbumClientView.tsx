@@ -71,7 +71,7 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
 
   const handleOrderViaLine = () => {
     const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-    const text = `สวัสดีครับ สนใจสั่งทำภาพ AI สไตล์ "${album.title}" ครับ (ลิงก์: ${currentUrl})`;
+    const text = `สวัสดีค่ะ สนใจสั่งทำภาพ AI สไตล์ "${album.title}" ค่ะ (ลิงก์: ${currentUrl})`;
     if (typeof window !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setLineCopied(true);
@@ -98,12 +98,12 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
   if (!isUnlocked) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950/80 p-8 backdrop-blur-xl text-center shadow-2xl">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/5 border border-white/10">
+        <div className="w-full max-w-md rounded-2xl border border-amber-500/25 bg-[#141015]/95 p-8 backdrop-blur-xl text-center shadow-2xl">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/25">
             <Lock className="h-5 w-5 text-amber-400" />
           </div>
           <h2 className="font-serif text-2xl font-normal text-white">Private Gallery</h2>
-          <p className="mt-2 text-xs text-zinc-400 font-mono">
+          <p className="mt-2 text-xs text-stone-400 font-mono">
             {album.title} — Restricted Client Access
           </p>
 
@@ -114,18 +114,18 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
                 value={inputPasscode}
                 onChange={(e) => setInputPasscode(e.target.value)}
                 placeholder="Enter client passcode"
-                className="w-full rounded-lg border border-white/10 bg-zinc-900/80 px-4 py-3 text-center text-sm font-mono tracking-widest text-white placeholder-zinc-500 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 transition-all"
+                className="w-full rounded-lg border border-amber-500/20 bg-stone-900/80 px-4 py-3 text-center text-sm font-mono tracking-widest text-white placeholder-stone-500 focus:border-amber-400/50 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-all"
                 autoFocus
               />
               {passcodeError && (
                 <p className="mt-2 text-xs font-mono text-rose-400">
-                  รหัสผ่านไม่ถูกต้อง โปรดลองอีกครั้ง
+                  รหัสผ่านไม่ถูกต้อง โปรดลองอีกครั้งนะคะ
                 </p>
               )}
             </div>
             <button
               type="submit"
-              className="w-full rounded-lg bg-white py-3 text-xs font-mono uppercase tracking-widest text-black hover:bg-zinc-200 transition-colors font-semibold"
+              className="btn-gold w-full rounded-lg py-3 text-xs font-mono uppercase tracking-widest font-semibold"
             >
               Unlock Gallery
             </button>
@@ -134,7 +134,7 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           <div className="mt-6">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-stone-500 hover:text-amber-300 transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to all galleries
             </Link>
@@ -147,10 +147,10 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
   return (
     <div className="mx-auto max-w-7xl px-3 py-6 sm:px-8 sm:py-12">
       {/* Top Navigation & Breadcrumb */}
-      <div className="flex items-center justify-between pb-4 sm:pb-6 border-b border-white/[0.08]">
+      <div className="flex items-center justify-between pb-4 sm:pb-6 border-b border-amber-500/15">
         <Link
           href="/galleries"
-          className="group inline-flex items-center gap-1.5 sm:gap-2 font-mono text-xs text-zinc-400 hover:text-white transition-colors"
+          className="group inline-flex items-center gap-1.5 sm:gap-2 font-mono text-xs text-stone-400 hover:text-amber-300 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5 transform transition-transform group-hover:-translate-x-1" />
           <span>รวมแคตตาล็อกสไตล์</span>
@@ -173,7 +173,7 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           <button
             type="button"
             onClick={handleShare}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition-all"
+            className="flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-stone-900/60 hover:bg-amber-500/10 hover:border-amber-500/40 px-3 py-1.5 font-mono text-xs text-stone-300 hover:text-white transition-all shadow-sm"
           >
             {copiedLink ? (
               <>
@@ -217,15 +217,15 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
       </div>
 
       {/* Filter & Toolbar */}
-      <div className="sticky top-16 z-30 flex items-center justify-between border-y border-white/[0.07] bg-[#090a0b]/80 backdrop-blur-md py-3.5 mb-8">
+      <div className="sticky top-16 z-30 flex items-center justify-between border-y border-amber-500/15 bg-[#0b0a0d]/90 backdrop-blur-xl py-3.5 mb-8">
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             type="button"
             onClick={() => setFilterFavorites(false)}
-            className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded-full transition-all ${
+            className={`font-mono text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-full transition-all ${
               !filterFavorites
-                ? 'bg-white text-black font-medium'
-                : 'text-zinc-400 hover:text-white'
+                ? 'btn-gold font-medium shadow-md shadow-amber-500/20'
+                : 'text-stone-400 hover:text-white'
             }`}
           >
             All Photos ({album.photos.length})
@@ -234,10 +234,10 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           <button
             type="button"
             onClick={() => setFilterFavorites(true)}
-            className={`flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded-full transition-all ${
+            className={`flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-full transition-all ${
               filterFavorites
                 ? 'bg-rose-500 text-white font-medium shadow-md shadow-rose-500/30'
-                : 'text-zinc-400 hover:text-rose-400'
+                : 'text-stone-400 hover:text-rose-400'
             }`}
           >
             <Heart className={`h-3 w-3 ${favorites.length > 0 ? 'fill-current' : ''}`} />
@@ -245,18 +245,18 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           </button>
         </div>
 
-        <span className="font-mono text-[11px] text-zinc-400">
+        <span className="font-mono text-[11px] text-stone-400">
           แตะรูปเพื่อดูเต็มจอ
         </span>
       </div>
 
       {/* 2-Column Mobile Grid for easy browsing & instant fullscreen lightbox */}
       {displayedPhotos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 p-16 text-center">
-          <Heart className="h-10 w-10 text-zinc-600 mb-3" />
-          <p className="text-sm font-mono text-zinc-400">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-amber-500/20 p-16 text-center bg-[#120f14]/40">
+          <Heart className="h-10 w-10 text-stone-600 mb-3" />
+          <p className="text-sm font-mono text-stone-400">
             {filterFavorites
-              ? 'ยังไม่มีรูปที่ถูกเลือกเป็น Favorite กดที่รูปหัวใจเพื่อบันทึกรูปที่ชอบได้เลยครับ'
+              ? 'ยังไม่มีรูปที่ถูกเลือกเป็น Favorite กดที่รูปหัวใจเพื่อบันทึกรูปที่ชอบได้เลยนะคะ'
               : 'ยังไม่มีรูปภาพในอัลบั้มนี้'}
           </p>
         </div>

@@ -244,7 +244,7 @@ export default function AdminDashboardClient({
     }));
 
     setStagedPhotos((prev) => [...prev, ...newStaged]);
-    showToast(`เพิ่ม ${newStaged.length} รูปลงในคิวแล้ว ตรวจสอบรูปแล้วกด "เริ่มอัปโหลด" ได้เลยครับ`);
+    showToast(`เพิ่ม ${newStaged.length} รูปลงในคิวแล้ว ตรวจสอบรูปแล้วกด "เริ่มอัปโหลด" ได้เลยนะคะ`);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -600,7 +600,7 @@ export default function AdminDashboardClient({
   const totalPhotosCount = albums.reduce((acc, a) => acc + (a.photoCount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-[#060709] text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-[#0b0a0d] text-stone-100 flex flex-col selection:bg-amber-500 selection:text-stone-950">
       {/* Toast Notification */}
       {toast && (
         <div
@@ -620,10 +620,10 @@ export default function AdminDashboardClient({
       )}
 
       {/* Admin Top Navbar */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-black/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-amber-500/15 bg-[#0b0a0d]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-rose-500/15 border border-amber-500/25 p-1 shadow-md shadow-orange-500/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-rose-500/20 border border-amber-500/30 p-1 shadow-md shadow-orange-500/15">
               <Image src="/logo.png" alt="Logo" width={26} height={26} className="object-contain" />
             </div>
             <div>
@@ -1100,7 +1100,7 @@ export default function AdminDashboardClient({
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 p-16 text-center">
                 <ImageIcon className="h-10 w-10 text-zinc-600 mb-3" />
                 <p className="text-sm font-mono text-zinc-400">
-                  ยังไม่มีรูปภาพในอัลบั้มนี้ ลากไฟล์ใส่ด้านบนเพื่อเริ่มอัปโหลดได้เลยครับ
+                  ยังไม่มีรูปภาพในอัลบั้มนี้ ลากไฟล์ใส่ด้านบนเพื่อเริ่มอัปโหลดได้เลยค่ะ
                 </p>
               </div>
             ) : (
@@ -1237,7 +1237,7 @@ export default function AdminDashboardClient({
               </h4>
               <p className="text-xs text-zinc-300 font-light leading-relaxed">
                 • <strong>อัตราส่วนที่แนะนำ:</strong> แนวนอนแบบ <strong>16:9</strong> (เช่น <strong>1200 x 675 px</strong> หรือ <strong>1920 x 1080 px</strong>) หรือ <strong>2:1</strong> (เช่น <strong>1200 x 600 px</strong>)<br />
-                • <strong>เหตุผล:</strong> บนจอมือถือ แนวนอนขนาดนี้จะกว้างพอดีจอ ไม่กินความสูงเกินไป และตัวหนังสือในภาพจะใหญ่คมชัดอ่านง่ายที่สุดครับ<br />
+                • <strong>เหตุผล:</strong> บนจอมือถือ แนวนอนขนาดนี้จะกว้างพอดีจอ ไม่กินความสูงเกินไป และตัวหนังสือในภาพจะใหญ่คมชัดอ่านง่ายที่สุดค่ะ<br />
                 • <strong>ประกาศแบบข้อความ:</strong> ไม่จำเป็นต้องแนบรูปภาพ ระบบจะจัดแสดงเป็นการ์ดข้อความสวยงามหรูหราให้โดยอัตโนมัติ
               </p>
             </div>

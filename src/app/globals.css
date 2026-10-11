@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #060709;
-  --foreground: #f4f4f6;
-  --card: #0d0f12;
-  --card-border: rgba(255, 255, 255, 0.08);
-  --muted: #8b8e96;
+  --background: #0b0a0d;
+  --foreground: #f6f3f0;
+  --card: #151117;
+  --card-border: rgba(245, 158, 11, 0.16);
+  --muted: #a39e99;
 }
 
 body {
@@ -14,44 +14,63 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 100% 30%, rgba(244, 63, 94, 0.07) 0%, transparent 35%),
-    radial-gradient(circle at 0% 70%, rgba(251, 146, 60, 0.06) 0%, transparent 35%),
-    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px;
+    radial-gradient(circle at 50% -4%, rgba(245, 158, 11, 0.22) 0%, rgba(249, 115, 22, 0.12) 32%, transparent 65%),
+    radial-gradient(circle at 95% 36%, rgba(244, 63, 94, 0.12) 0%, rgba(251, 113, 133, 0.05) 30%, transparent 55%),
+    radial-gradient(circle at 5% 68%, rgba(245, 158, 11, 0.11) 0%, rgba(217, 119, 6, 0.05) 35%, transparent 55%),
+    radial-gradient(circle at 50% 102%, rgba(249, 115, 22, 0.15) 0%, rgba(244, 63, 94, 0.09) 35%, transparent 65%),
+    radial-gradient(rgba(245, 158, 11, 0.045) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 32px 32px;
   background-attachment: fixed;
 }
 
-/* Custom smooth scrollbar */
+/* Custom warm luxury scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #060709;
+  background: #0b0a0d;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #23252b;
+  background: #332621;
   border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.12);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #383b45;
+  background: #543b32;
+  border-color: rgba(245, 158, 11, 0.25);
 }
 
-/* Glassmorphism Luxury Cards */
+/* Glassmorphism Warm Luxury Cards matching Official Logo */
 .glass-panel {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  background: linear-gradient(145deg, rgba(28, 22, 27, 0.78) 0%, rgba(18, 15, 19, 0.88) 100%);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(245, 158, 11, 0.16);
+  box-shadow: 0 12px 35px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(251, 191, 36, 0.12);
 }
 
 .glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 16px 45px -10px rgba(0, 0, 0, 0.9), 0 0 25px -5px rgba(245, 158, 11, 0.15);
+}
+
+/* Luminous Gold-to-Coral Button Utility */
+.btn-gold {
+  background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 45%, #EA580C 100%);
+  color: #0b0a0d;
+  font-weight: 600;
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.38);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-gold:hover {
+  box-shadow: 0 6px 30px rgba(245, 158, 11, 0.55);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 /* Content visibility optimization for ultra-fast mobile scrolling with 100+ images */

@@ -133,24 +133,24 @@ export default function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl transition-all duration-300 select-none animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0a0d]/95 backdrop-blur-2xl transition-all duration-300 select-none animate-fade-in"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       {/* Top Header Controls Bar */}
-      <div className="absolute top-0 inset-x-0 z-50 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto">
+      <div className="absolute top-0 inset-x-0 z-50 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-[#0b0a0d]/95 via-[#0b0a0d]/50 to-transparent pointer-events-auto">
         {/* Photo Counter */}
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs sm:text-sm tracking-widest text-zinc-400">
-            <span className="text-white font-medium">
+          <span className="font-mono text-xs sm:text-sm tracking-widest text-stone-400">
+            <span className="text-amber-300 font-medium">
               {String(currentIndex + 1).padStart(2, '0')}
             </span>
             {' / '}
             {String(photos.length).padStart(2, '0')}
           </span>
-          <span className="hidden sm:inline-block h-3 w-[1px] bg-zinc-700" />
-          <span className="hidden sm:inline-block font-mono text-xs text-zinc-400 truncate max-w-xs">
+          <span className="hidden sm:inline-block h-3 w-[1px] bg-amber-500/25" />
+          <span className="hidden sm:inline-block font-mono text-xs text-stone-400 truncate max-w-xs">
             {currentPhoto.originalName}
           </span>
         </div>
@@ -161,7 +161,7 @@ export default function Lightbox({
           <button
             type="button"
             onClick={toggleZoom}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/70 hover:bg-amber-500/20 text-stone-300 hover:text-white border border-amber-500/20 transition-all"
             title={isZoomed ? 'Zoom out (ย่อ)' : 'Zoom in (ขยาย)'}
           >
             {isZoomed ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
@@ -174,8 +174,8 @@ export default function Lightbox({
               onClick={() => onToggleFavorite(currentPhoto.id)}
               className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all ${
                 isFavorite
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40'
-                  : 'bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/40'
+                  : 'bg-stone-900/70 hover:bg-amber-500/20 text-stone-300 hover:text-white border border-amber-500/20'
               }`}
               title={isFavorite ? 'Remove favorite' : 'Add to favorites'}
             >
@@ -187,7 +187,7 @@ export default function Lightbox({
           <a
             href={currentPhoto.originalUrl}
             download={currentPhoto.originalName}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/70 hover:bg-amber-500/20 text-stone-300 hover:text-white border border-amber-500/20 transition-all"
             title="Download full-resolution photo"
           >
             <Download className="h-4 w-4" />
@@ -197,7 +197,7 @@ export default function Lightbox({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors ml-2"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/70 hover:bg-amber-500/20 text-stone-300 hover:text-white border border-amber-500/20 transition-all ml-2"
             title="Close (Esc)"
           >
             <X className="h-5 w-5" />
@@ -225,10 +225,10 @@ export default function Lightbox({
         )}
 
         {hasError ? (
-          <div className="flex flex-col items-center justify-center text-center p-8 rounded-2xl glass-panel border border-white/10 text-zinc-400 space-y-2">
+          <div className="flex flex-col items-center justify-center text-center p-8 rounded-2xl glass-panel border border-amber-500/20 text-stone-400 space-y-2">
             <AlertCircle className="h-10 w-10 text-rose-400" />
-            <p className="text-sm font-mono text-zinc-200">ไม่สามารถโหลดรูปภาพได้</p>
-            <p className="text-xs text-zinc-500 font-mono">โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p>
+            <p className="text-sm font-mono text-stone-200">ไม่สามารถโหลดรูปภาพได้</p>
+            <p className="text-xs text-stone-500 font-mono">โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p>
           </div>
         ) : (
           <img
@@ -253,7 +253,7 @@ export default function Lightbox({
             e.stopPropagation();
             handlePrev();
           }}
-          className="flex absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/60 sm:bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105 border border-white/15"
+          className="flex absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-stone-900/80 hover:bg-amber-500/20 text-white backdrop-blur-md transition-all hover:scale-105 border border-amber-500/30"
           title="Previous photo (รูปก่อนหน้า)"
         >
           <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -267,7 +267,7 @@ export default function Lightbox({
             e.stopPropagation();
             handleNext();
           }}
-          className="flex absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/60 sm:bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all hover:scale-105 border border-white/15"
+          className="flex absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-stone-900/80 hover:bg-amber-500/20 text-white backdrop-blur-md transition-all hover:scale-105 border border-amber-500/30"
           title="Next photo (รูปถัดไป)"
         >
           <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -276,7 +276,7 @@ export default function Lightbox({
 
       {/* Mobile Swipe Guidance Indicator */}
       <div className="sm:hidden absolute bottom-4 inset-x-0 text-center pointer-events-none">
-        <span className="text-[11px] font-mono tracking-wider text-zinc-300 bg-black/80 px-3.5 py-1.5 rounded-full border border-white/15 shadow-xl">
+        <span className="text-[11px] font-mono tracking-wider text-amber-200/90 bg-[#0b0a0d]/90 px-3.5 py-1.5 rounded-full border border-amber-500/30 shadow-xl">
           {isZoomed ? '👆 ใช้นิ้วลากเลื่อนดูส่วนต่างๆ ของภาพ' : '👉 ใช้นิ้วปัดซ้าย-ขวา เพื่อเลื่อนดูรูป · ปัดลงเพื่อปิด'}
         </span>
       </div>

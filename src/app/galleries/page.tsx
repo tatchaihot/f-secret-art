@@ -16,21 +16,21 @@ export default async function GalleriesPage() {
   const albums = await getAllAlbums();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#060709] text-zinc-100">
+    <div className="min-h-screen flex flex-col bg-[#0b0a0d] text-stone-100 selection:bg-amber-500 selection:text-stone-950">
       <Navbar />
 
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-12 sm:px-8 sm:py-16">
         {/* Breadcrumb & Navigation */}
-        <div className="flex items-center justify-between pb-6 border-b border-white/[0.08] mb-10">
+        <div className="flex items-center justify-between pb-6 border-b border-amber-500/15 mb-10">
           <Link
             href="/"
-            className="group inline-flex items-center gap-2 font-mono text-xs text-zinc-400 hover:text-white transition-colors"
+            className="group inline-flex items-center gap-2 font-mono text-xs text-stone-400 hover:text-amber-300 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5 transform transition-transform group-hover:-translate-x-1" />
             <span>กลับสู่หน้าแรก</span>
           </Link>
 
-          <span className="font-mono text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+          <span className="font-mono text-xs text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-full shadow-sm shadow-amber-500/10">
             ทั้งหมด {albums.length} สไตล์
           </span>
         </div>
@@ -44,8 +44,8 @@ export default async function GalleriesPage() {
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-white">
             แคตตาล็อกสไตล์ภาพ AI ทั้งหมด
           </h1>
-          <p className="text-sm sm:text-base text-zinc-400 font-light leading-relaxed">
-            เลือกดูสไตล์ที่ตรงกับเป้าหมายการใช้งานของคุณ สามารถคลิกเข้าไปเพื่อดูภาพขนาดเต็มแบบคมชัด และกดหัวใจเพื่อส่งรูปที่ชอบมาทางไลน์ได้ทันที
+          <p className="text-sm sm:text-base text-stone-300 font-light leading-relaxed">
+            เลือกดูสไตล์ที่ตรงกับเป้าหมายการใช้งานของคุณ สามารถคลิกเข้าไปเพื่อดูภาพขนาดเต็มแบบคมชัด และกดหัวใจเพื่อส่งรูปที่ชอบมาทางไลน์ได้ทันทีค่ะ
           </p>
         </div>
 
@@ -58,9 +58,9 @@ export default async function GalleriesPage() {
               <Link
                 key={album.id}
                 href={`/album/${album.slug}`}
-                className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-amber-500/40 hover:shadow-2xl hover:shadow-orange-500/10"
+                className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-orange-500/15"
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-950">
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-950">
                   <Image
                     src={cover}
                     alt={album.title}
@@ -68,10 +68,10 @@ export default async function GalleriesPage() {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b0a0d] via-black/30 to-transparent" />
 
                   <div className="absolute top-3.5 right-3.5">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-mono text-zinc-200 border border-white/15">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b0a0d]/80 backdrop-blur-md px-3 py-1 text-xs font-mono text-amber-200 border border-amber-500/30 shadow-md">
                       <Images className="h-3.5 w-3.5 text-amber-400" />
                       {album.photoCount || 0} ตัวอย่าง
                     </span>
@@ -80,17 +80,17 @@ export default async function GalleriesPage() {
 
                 <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
                   <div>
-                    <h3 className="font-serif text-xl font-medium text-white group-hover:text-amber-200 transition-colors line-clamp-1">
+                    <h3 className="font-serif text-xl font-medium text-white group-hover:text-amber-300 transition-colors line-clamp-1">
                       {album.title}
                     </h3>
                     {album.description && (
-                      <p className="mt-2 text-xs sm:text-sm text-zinc-400 line-clamp-2 leading-relaxed font-light">
+                      <p className="mt-2 text-xs sm:text-sm text-stone-400 line-clamp-2 leading-relaxed font-light">
                         {album.description}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-white/[0.06] text-xs font-mono text-zinc-300 group-hover:text-white transition-colors">
+                  <div className="flex items-center justify-between pt-4 border-t border-amber-500/15 text-xs font-mono text-stone-300 group-hover:text-amber-200 transition-colors">
                     <span className="text-amber-400 font-semibold group-hover:underline">
                       เข้าชมแกลเลอรีนี้
                     </span>
@@ -104,15 +104,15 @@ export default async function GalleriesPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.08] bg-black/60 py-10 mt-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-zinc-400">
+      <footer className="border-t border-amber-500/15 bg-[#080709] py-10 mt-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-stone-400">
           <div className="flex items-center gap-2">
             <Image src="/logo.png" alt="F-Secret Logo" width={24} height={24} className="object-contain" />
             <span>© {new Date().getFullYear()} F-SECRET BY TATCHAI. ALL RIGHTS RESERVED.</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/" className="hover:text-amber-300 transition-colors">หน้าแรก</Link>
-            <Link href="/admin" className="hover:text-white transition-colors">Admin Portal</Link>
+            <Link href="/admin" className="hover:text-stone-200 transition-colors">Admin Portal</Link>
           </div>
         </div>
       </footer>

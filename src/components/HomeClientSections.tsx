@@ -12,7 +12,7 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
           <Megaphone className="h-3.5 w-3.5 animate-pulse" />
         </div>
         <h3 className="font-serif text-base sm:text-lg font-normal text-white">
@@ -24,14 +24,14 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
         {announcements.map((item) => (
           <div
             key={item.id}
-            className="flex flex-col justify-between rounded-xl glass-panel p-5 border border-white/10 hover:border-amber-500/30 transition-all shadow-lg"
+            className="flex flex-col justify-between rounded-xl glass-panel p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all shadow-lg shadow-black/50"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/30">
                   Announcement
                 </span>
-                <span className="text-[10px] font-mono text-zinc-500">
+                <span className="text-[10px] font-mono text-stone-400">
                   {item.createdAt?.split('T')[0]}
                 </span>
               </div>
@@ -41,14 +41,14 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
               </h4>
 
               {item.content && (
-                <p className="text-xs sm:text-sm text-zinc-300 font-light leading-relaxed whitespace-pre-line">
+                <p className="text-xs sm:text-sm text-stone-300 font-light leading-relaxed whitespace-pre-line">
                   {item.content}
                 </p>
               )}
 
               {/* Optional Announcement Banner Image */}
               {item.imageUrl && (
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-zinc-950 mt-3 border border-white/10">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-stone-950 mt-3 border border-amber-500/20">
                   <Image
                     src={item.imageUrl}
                     alt={item.title}
@@ -60,7 +60,7 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
             </div>
 
             {item.linkUrl && (
-              <div className="pt-4 mt-2 border-t border-white/[0.06]">
+              <div className="pt-4 mt-2 border-t border-amber-500/15">
                 <a
                   href={item.linkUrl}
                   target={item.linkUrl.startsWith('http') ? '_blank' : '_self'}
@@ -92,8 +92,8 @@ export function PhotoGuideSection() {
         <h2 className="font-serif text-2xl sm:text-4xl font-normal text-white">
           คำแนะนำ: วิธีเตรียมรูปถ่ายเพื่อสร้างภาพ AI
         </h2>
-        <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
-          เพื่อให้ภาพ AI ที่สร้างออกมามีความเหมือนใบหน้าของคุณและดูเป็นธรรมชาติที่สุด โปรดดูคำแนะนำในการเตรียมรูปถ่าย 4–6 รูปด้านล่างนี้ครับ
+        <p className="text-xs sm:text-sm text-stone-400 font-light leading-relaxed">
+          เพื่อให้ภาพ AI ที่สร้างออกมามีความเหมือนใบหน้าของคุณและดูเป็นธรรมชาติที่สุด สามารถดูคำแนะนำในการเตรียมรูปถ่าย 4–6 รูปด้านล่างนี้ได้เลยนะคะ
         </p>
       </div>
 
@@ -192,8 +192,8 @@ export function FaqSection({ faqs }: { faqs: FaqItem[] }) {
             key={item.id || index}
             className={`rounded-xl border transition-all ${
               isOpen
-                ? 'border-amber-500/40 bg-zinc-900/60 shadow-lg shadow-orange-500/5'
-                : 'border-white/[0.08] bg-zinc-950/40 hover:border-white/15'
+                ? 'border-amber-500/45 bg-[#171217] shadow-lg shadow-amber-500/10'
+                : 'border-amber-500/15 bg-[#120f14]/60 hover:border-amber-500/30'
             }`}
           >
             <button
@@ -205,14 +205,14 @@ export function FaqSection({ faqs }: { faqs: FaqItem[] }) {
                 {item.question}
               </span>
               <ChevronDown
-                className={`h-4 w-4 text-zinc-400 shrink-0 transition-transform duration-300 ${
+                className={`h-4 w-4 text-stone-400 shrink-0 transition-transform duration-300 ${
                   isOpen ? 'rotate-180 text-amber-400' : ''
                 }`}
               />
             </button>
 
             {isOpen && (
-              <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-zinc-300 font-light leading-relaxed border-t border-white/[0.06] mt-1 animate-fade-in">
+              <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-stone-300 font-light leading-relaxed border-t border-amber-500/15 mt-1 animate-fade-in">
                 {item.answer}
               </div>
             )}
@@ -235,13 +235,13 @@ export function LineContactCard() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl glass-panel p-6 sm:p-10 shadow-2xl">
-      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-500/10 filter blur-3xl pointer-events-none" />
-      <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-amber-500/10 filter blur-3xl pointer-events-none" />
+    <div className="relative overflow-hidden rounded-2xl glass-panel p-6 sm:p-10 shadow-2xl border border-amber-500/25">
+      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-rose-500/15 filter blur-3xl pointer-events-none" />
+      <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-amber-500/20 filter blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="flex-1 space-y-4 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-mono text-emerald-300">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1 text-xs font-mono text-emerald-300 shadow-sm shadow-emerald-500/15">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             พร้อมรับงานตลอด 24 ชม. · ตอบกลับรวดเร็ว
           </div>
@@ -250,8 +250,8 @@ export function LineContactCard() {
             ทักไลน์สอบถาม / สั่งทำภาพ AI
           </h3>
 
-          <p className="text-sm sm:text-base text-zinc-400 font-light leading-relaxed max-w-xl">
-            แคปภาพสไตล์ที่ถูกใจจากเว็บนี้ แล้วส่งมาทางไลน์เพื่อประเมินราคาหรือปรึกษาไอเดียได้ทันทีครับ ให้คำแนะนำฟรี ไม่มีค่าใช้จ่ายเบื้องต้น
+          <p className="text-sm sm:text-base text-stone-300 font-light leading-relaxed max-w-xl">
+            แคปภาพสไตล์ที่ถูกใจจากเว็บนี้ แล้วส่งมาทางไลน์เพื่อประเมินราคาหรือปรึกษาไอเดียได้ทันทีเลยค่ะ ให้คำแนะนำฟรี ไม่มีค่าใช้จ่ายเบื้องต้น
           </p>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
@@ -268,7 +268,7 @@ export function LineContactCard() {
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-3 text-xs font-mono text-zinc-300 hover:text-white transition-all"
+              className="flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-stone-900/60 hover:bg-amber-500/10 hover:border-amber-500/40 px-4 py-3 text-xs font-mono text-stone-300 hover:text-white transition-all"
             >
               {copied ? (
                 <>
@@ -286,7 +286,7 @@ export function LineContactCard() {
         </div>
 
         <div className="flex flex-col items-center">
-          <div className="relative rounded-2xl p-3 bg-white/5 border border-white/20 backdrop-blur-xl shadow-2xl hover:border-emerald-500/40 transition-colors">
+          <div className="relative rounded-2xl p-3 bg-stone-900/80 border border-amber-500/30 backdrop-blur-xl shadow-2xl hover:border-amber-400/50 transition-colors">
             <div className="relative h-48 w-48 sm:h-52 sm:w-52 overflow-hidden rounded-xl bg-white">
               <Image
                 src="/line-qr.jpg"
@@ -297,7 +297,7 @@ export function LineContactCard() {
               />
             </div>
             <div className="mt-2 text-center">
-              <p className="text-[11px] font-mono tracking-widest uppercase text-zinc-400">
+              <p className="text-[11px] font-mono tracking-widest uppercase text-stone-400">
                 Scan to Add LINE
               </p>
               <p className="text-xs font-mono text-emerald-400 font-semibold">
@@ -325,7 +325,7 @@ export function HeroActions() {
     <div className="flex flex-wrap items-center gap-3 pt-4">
       <a
         href="#styles"
-        className="flex items-center gap-2 rounded-full bg-white px-6 py-3 text-xs sm:text-sm font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200 transition-all shadow-lg hover:scale-105"
+        className="btn-gold flex items-center gap-2 rounded-full px-6 py-3 text-xs sm:text-sm font-mono uppercase tracking-wider font-semibold hover:scale-105 transition-all shadow-lg shadow-amber-500/20"
       >
         <span>เลือกชมสไตล์ผลงาน</span>
         <ArrowRight className="h-4 w-4" />
@@ -344,7 +344,7 @@ export function HeroActions() {
       <button
         type="button"
         onClick={handleCopy}
-        className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 text-xs font-mono text-zinc-300 hover:text-white transition-all"
+        className="flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-stone-900/70 hover:bg-amber-500/10 hover:border-amber-500/45 px-4 py-3 text-xs font-mono text-stone-300 hover:text-white transition-all shadow-sm"
         title="คัดลอก LINE ID: tatchaihot"
       >
         {copied ? (
@@ -354,9 +354,9 @@ export function HeroActions() {
           </>
         ) : (
           <>
-            <span className="text-zinc-500">ID:</span>
+            <span className="text-stone-500">ID:</span>
             <span>tatchaihot</span>
-            <Copy className="h-3.5 w-3.5 ml-1 text-zinc-400" />
+            <Copy className="h-3.5 w-3.5 ml-1 text-stone-400" />
           </>
         )}
       </button>
