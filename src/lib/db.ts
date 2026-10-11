@@ -192,10 +192,15 @@ export async function getAllAlbums(): Promise<Album[]> {
 
     for (const album of albums) {
       const list = map.get(album.id) || [];
-      if (album.coverImage && !list.includes(album.coverImage)) {
-        album.previewPhotos = [album.coverImage, ...list].slice(0, 4);
+      // Filter out any stale local file paths or empty strings
+      const validPhotos = list.filter((u) => u && typeof u === 'string' && !u.startsWith('/uploads/'));
+      if (album.coverImage && validPhotos.includes(album.coverImage)) {
+        album.previewPhotos = [
+          album.coverImage,
+          ...validPhotos.filter((u) => u !== album.coverImage),
+        ].slice(0, 4);
       } else {
-        album.previewPhotos = list.slice(0, 4);
+        album.previewPhotos = validPhotos.slice(0, 4);
       }
     }
 

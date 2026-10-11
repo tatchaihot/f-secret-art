@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import { Images } from 'lucide-react';
 
@@ -27,6 +30,57 @@ function getOptimizedThumb(url: string, width = 360, height = 270): string {
   return url;
 }
 
+/**
+ * Resilient thumbnail image with auto fallback and graceful error state
+ */
+function CoverThumb({
+  url,
+  alt,
+  width,
+  height,
+  priority,
+  sizes,
+}: {
+  url: string;
+  alt: string;
+  width: number;
+  height: number;
+  priority: boolean;
+  sizes: string;
+}) {
+  const [src, setSrc] = useState(getOptimizedThumb(url, width, height));
+  const [error, setError] = useState(false);
+
+  if (error || !url) {
+    return (
+      <div className="relative h-full w-full overflow-hidden bg-stone-900 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-stone-900 to-stone-950" />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      unoptimized
+      priority={priority}
+      loading={priority ? 'eager' : 'lazy'}
+      sizes={sizes}
+      onError={() => {
+        // If transformed URL fails, try raw url, otherwise fail gracefully without broken icon
+        if (src !== url && url.startsWith('http')) {
+          setSrc(url);
+        } else {
+          setError(true);
+        }
+      }}
+      className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
+    />
+  );
+}
+
 export default function AlbumCoverGrid({
   previewPhotos = [],
   coverImage,
@@ -34,13 +88,22 @@ export default function AlbumCoverGrid({
   photoCount = 0,
   priority = false,
 }: AlbumCoverGridProps) {
-  // Build a distinct list of photos
-  const rawList = [...previewPhotos];
-  if (coverImage && !rawList.includes(coverImage)) {
-    rawList.unshift(coverImage);
+  // Collect all verified photos, filtering out local /uploads/ or invalid strings
+  const candidateList = [...previewPhotos];
+  if (
+    coverImage &&
+    typeof coverImage === 'string' &&
+    coverImage.startsWith('http') &&
+    !candidateList.includes(coverImage)
+  ) {
+    candidateList.unshift(coverImage);
   }
 
-  const photos = rawList.length > 0 ? rawList.slice(0, 4) : [DEFAULT_COVER];
+  const validPhotos = candidateList.filter(
+    (u) => typeof u === 'string' && u.trim().length > 0 && !u.startsWith('/uploads/')
+  );
+
+  const photos = validPhotos.length > 0 ? validPhotos.slice(0, 4) : [DEFAULT_COVER];
 
   return (
     <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-950">
@@ -49,15 +112,13 @@ export default function AlbumCoverGrid({
         <div className="grid grid-cols-2 grid-rows-2 h-full w-full gap-[2px] bg-[#0b0a0d]">
           {photos.map((url, i) => (
             <div key={i} className="relative h-full w-full overflow-hidden bg-stone-900">
-              <Image
-                src={getOptimizedThumb(url, 360, 270)}
+              <CoverThumb
+                url={url}
                 alt={`${title} ตัวอย่างที่ ${i + 1}`}
-                fill
-                unoptimized
+                width={360}
+                height={270}
                 priority={priority && i < 2}
-                loading={priority && i < 2 ? 'eager' : 'lazy'}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 17vw"
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
               />
             </div>
           ))}
@@ -66,39 +127,33 @@ export default function AlbumCoverGrid({
         /* 3-Photo Layout: 1 Large Left + 2 Stacked Right */
         <div className="grid grid-cols-2 grid-rows-2 h-full w-full gap-[2px] bg-[#0b0a0d]">
           <div className="row-span-2 relative h-full w-full overflow-hidden bg-stone-900">
-            <Image
-              src={getOptimizedThumb(photos[0], 480, 540)}
+            <CoverThumb
+              url={photos[0]}
               alt={`${title} ตัวอย่างที่ 1`}
-              fill
-              unoptimized
+              width={480}
+              height={540}
               priority={priority}
-              loading={priority ? 'eager' : 'lazy'}
               sizes="(max-width: 640px) 60vw, (max-width: 1024px) 30vw, 20vw"
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
             />
           </div>
           <div className="col-start-2 row-start-1 relative h-full w-full overflow-hidden bg-stone-900">
-            <Image
-              src={getOptimizedThumb(photos[1], 360, 270)}
+            <CoverThumb
+              url={photos[1]}
               alt={`${title} ตัวอย่างที่ 2`}
-              fill
-              unoptimized
+              width={360}
+              height={270}
               priority={priority}
-              loading={priority ? 'eager' : 'lazy'}
               sizes="(max-width: 640px) 40vw, (max-width: 1024px) 20vw, 15vw"
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
             />
           </div>
           <div className="col-start-2 row-start-2 relative h-full w-full overflow-hidden bg-stone-900">
-            <Image
-              src={getOptimizedThumb(photos[2], 360, 270)}
+            <CoverThumb
+              url={photos[2]}
               alt={`${title} ตัวอย่างที่ 3`}
-              fill
-              unoptimized
+              width={360}
+              height={270}
               priority={false}
-              loading="lazy"
               sizes="(max-width: 640px) 40vw, (max-width: 1024px) 20vw, 15vw"
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
             />
           </div>
         </div>
@@ -107,15 +162,13 @@ export default function AlbumCoverGrid({
         <div className="grid grid-cols-2 h-full w-full gap-[2px] bg-[#0b0a0d]">
           {photos.map((url, i) => (
             <div key={i} className="relative h-full w-full overflow-hidden bg-stone-900">
-              <Image
-                src={getOptimizedThumb(url, 360, 540)}
+              <CoverThumb
+                url={url}
                 alt={`${title} ตัวอย่างที่ ${i + 1}`}
-                fill
-                unoptimized
+                width={360}
+                height={540}
                 priority={priority}
-                loading={priority ? 'eager' : 'lazy'}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 17vw"
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-108"
               />
             </div>
           ))}
@@ -123,15 +176,13 @@ export default function AlbumCoverGrid({
       ) : (
         /* Single Photo Full Cover */
         <div className="relative h-full w-full overflow-hidden bg-stone-900">
-          <Image
-            src={getOptimizedThumb(photos[0], 640, 480)}
+          <CoverThumb
+            url={photos[0]}
             alt={title}
-            fill
-            unoptimized
+            width={640}
+            height={480}
             priority={priority}
-            loading={priority ? 'eager' : 'lazy'}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         </div>
       )}

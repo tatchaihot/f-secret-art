@@ -322,29 +322,29 @@ export function HeroActions() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 pt-4">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 pt-2 sm:pt-4">
       <a
         href="#styles"
-        className="btn-gold flex items-center gap-2 rounded-full px-6 py-3 text-xs sm:text-sm font-mono uppercase tracking-wider font-semibold hover:scale-105 transition-all shadow-lg shadow-amber-500/20"
+        className="btn-gold flex items-center justify-center gap-2 rounded-full px-6 py-3.5 sm:py-3 text-xs sm:text-sm font-mono uppercase tracking-wider font-semibold hover:scale-105 transition-all shadow-lg shadow-amber-500/20 text-center"
       >
         <span>เลือกชมสไตล์ผลงาน</span>
-        <ArrowRight className="h-4 w-4" />
+        <ArrowRight className="h-4 w-4 shrink-0" />
       </a>
 
       <a
         href="https://line.me/ti/p/~tatchaihot"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-6 py-3 text-xs sm:text-sm font-mono tracking-wider text-white font-semibold transition-all shadow-lg shadow-[#06C755]/25 hover:scale-105"
+        className="flex items-center justify-center gap-2 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-6 py-3.5 sm:py-3 text-xs sm:text-sm font-mono tracking-wider text-white font-semibold transition-all shadow-lg shadow-[#06C755]/25 hover:scale-105 text-center"
       >
-        <MessageCircle className="h-4 w-4 fill-white" />
+        <MessageCircle className="h-4 w-4 fill-white shrink-0" />
         <span>ทักไลน์สอบถาม (LINE)</span>
       </a>
 
       <button
         type="button"
         onClick={handleCopy}
-        className="flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-stone-900/70 hover:bg-amber-500/10 hover:border-amber-500/45 px-4 py-3 text-xs font-mono text-stone-300 hover:text-white transition-all shadow-sm"
+        className="flex items-center justify-center gap-1.5 rounded-full border border-amber-500/25 bg-stone-900/70 hover:bg-amber-500/10 hover:border-amber-500/45 px-4 py-2.5 sm:py-3 text-xs font-mono text-stone-300 hover:text-white transition-all shadow-sm"
         title="คัดลอก LINE ID: tatchaihot"
       >
         {copied ? (

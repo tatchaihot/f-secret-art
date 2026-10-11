@@ -12,8 +12,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 w-full border-b border-amber-500/15 bg-[#0b0a0d]/90 backdrop-blur-xl transition-all shadow-lg shadow-black/40">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
         {/* Studio Branding with Official Logo */}
-        <Link href="/" className="group flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-rose-500/20 border border-amber-500/30 group-hover:border-amber-400/60 transition-all p-1 shadow-md shadow-orange-500/15">
+        <Link href="/" className="group flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-rose-500/20 border border-amber-500/30 group-hover:border-amber-400/60 transition-all p-1 shadow-md shadow-orange-500/15 shrink-0">
             <Image
               src="/logo.png"
               alt="F-Secret By Tatchai"
@@ -23,11 +23,11 @@ export default function Navbar() {
               priority
             />
           </div>
-          <div className="flex flex-col">
-            <span className="font-serif tracking-wide text-base font-semibold text-white uppercase">
+          <div className="flex flex-col min-w-0">
+            <span className="font-serif tracking-wide text-sm sm:text-base font-semibold text-white uppercase whitespace-nowrap">
               F-Secret <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 font-sans font-light">AI Art</span>
             </span>
-            <span className="text-[9px] tracking-widest text-amber-300/80 uppercase font-mono -mt-0.5">
+            <span className="text-[8px] sm:text-[9px] tracking-widest text-amber-300/80 uppercase font-mono -mt-0.5 whitespace-nowrap">
               By Tatchai · AI Art Studio
             </span>
           </div>
@@ -57,22 +57,15 @@ export default function Navbar() {
         </div>
 
         {/* Direct Action Buttons & Mobile Hamburger */}
-        <div className="flex items-center gap-1 sm:gap-3">
-          {/* Quick links on mobile: Gallery & Contact */}
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Mobile Catalog Shortcut Button */}
           <Link
             href="/galleries"
-            className="md:hidden text-xs font-mono text-zinc-300 hover:text-white px-2 py-1 transition-colors"
+            className="md:hidden flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 font-mono text-[11px] text-amber-300 hover:bg-amber-500/25 transition-all"
           >
-            Gallery
+            <Layers className="h-3 w-3 text-amber-400" />
+            <span>แคตตาล็อก</span>
           </Link>
-          <a
-            href="https://line.me/ti/p/~tatchaihot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="md:hidden text-xs font-mono text-zinc-300 hover:text-white px-2 py-1 transition-colors"
-          >
-            ติดต่อ
-          </a>
 
           {/* Quick Line Contact CTA for larger screens */}
           <a

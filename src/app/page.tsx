@@ -25,17 +25,21 @@ export default async function HomePage() {
 
           <div className="relative mx-auto max-w-7xl px-4 sm:px-8">
             <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/35 bg-amber-500/10 px-3.5 py-1 font-mono text-xs text-amber-300 shadow-sm shadow-amber-500/10">
-                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                <span>F-Secret AI Art · สตูดิโอสร้างสรรค์ภาพ AI โดย Tatchai</span>
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-amber-500/35 bg-amber-500/10 px-3 py-1 font-mono text-[11px] sm:text-xs text-amber-300 shadow-sm shadow-amber-500/10 max-w-full">
+                <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span className="hidden sm:inline">F-Secret AI Art · สตูดิโอสร้างสรรค์ภาพ AI โดย Tatchai</span>
+                <span className="sm:hidden">F-Secret AI Art · Studio By Tatchai</span>
               </div>
 
-              <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-[1.15]">
-                บริการรับสร้างภาพ AI สำหรับ <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 drop-shadow-sm">โปรไฟล์ บุคคล และแบรนด์</span>
+              <h1 className="font-serif text-2xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-tight sm:leading-[1.15]">
+                บริการรับสร้างภาพ AI
+                <span className="block mt-1 sm:mt-2 italic text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 drop-shadow-sm font-light">
+                  สำหรับโปรไฟล์ บุคคล และแบรนด์
+                </span>
               </h1>
 
-              <p className="text-base sm:text-lg text-stone-300 leading-relaxed font-light max-w-2xl">
-                สร้างสรรค์ภาพถ่ายโปรไฟล์โมเดลเสมือนจริง สินค้า โฆษณา และงานศิลป์สุดประณีต ตรงตามบรีฟของคุณ เลือกดูสไตล์ภาพที่ต้องการด้านล่าง แล้วทัก LINE เพื่อเริ่มงานได้ทันทีค่ะ
+              <p className="text-sm sm:text-base lg:text-lg text-stone-300 leading-relaxed font-light max-w-2xl text-pretty">
+                สร้างสรรค์ภาพถ่ายโปรไฟล์โมเดลเสมือนจริง สินค้าโฆษณา และคอนเซ็ปต์อาร์ตสุดประณีต ตรงตามบรีฟของคุณ เลือกดูสไตล์ภาพที่ต้องการด้านล่าง แล้วทัก LINE เพื่อเริ่มงานได้ทันทีค่ะ
               </p>
 
               <HeroActions />
