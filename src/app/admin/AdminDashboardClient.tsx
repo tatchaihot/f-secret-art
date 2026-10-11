@@ -623,14 +623,14 @@ export default function AdminDashboardClient({
       <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-black/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-purple-300 font-mono text-xs font-bold border border-white/15">
-              FS
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-rose-500/15 border border-amber-500/25 p-1 shadow-md shadow-orange-500/10">
+              <Image src="/logo.png" alt="Logo" width={26} height={26} className="object-contain" />
             </div>
             <div>
               <span className="font-serif text-sm font-semibold tracking-wide text-white uppercase">
                 F-Secret AI Art
               </span>
-              <span className="ml-2 rounded bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+              <span className="ml-2 rounded bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono text-amber-300">
                 Admin Panel
               </span>
             </div>
@@ -667,11 +667,11 @@ export default function AdminDashboardClient({
             onClick={() => setActiveTab('albums')}
             className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'albums'
-                ? 'border-purple-400 text-white font-medium'
+                ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <FolderPlus className="h-4 w-4 text-purple-400" />
+            <FolderPlus className="h-4 w-4 text-amber-400" />
             <span>1. อัลบั้ม/แคตตาล็อก ({albums.length})</span>
           </button>
 
@@ -683,7 +683,7 @@ export default function AdminDashboardClient({
             }}
             className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'photos'
-                ? 'border-purple-400 text-white font-medium'
+                ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -696,7 +696,7 @@ export default function AdminDashboardClient({
             onClick={() => setActiveTab('announcements')}
             className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'announcements'
-                ? 'border-purple-400 text-white font-medium'
+                ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -709,11 +709,11 @@ export default function AdminDashboardClient({
             onClick={() => setActiveTab('faqs')}
             className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'faqs'
-                ? 'border-purple-400 text-white font-medium'
+                ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <HelpCircle className="h-4 w-4 text-blue-400" />
+            <HelpCircle className="h-4 w-4 text-sky-400" />
             <span>4. จัดการคำถามที่พบบ่อย (FAQ)</span>
           </button>
         </div>
@@ -761,7 +761,7 @@ export default function AdminDashboardClient({
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
                       <div className="absolute top-3 left-3">
-                        <span className="rounded-full bg-purple-500/20 backdrop-blur-md px-2.5 py-0.5 font-mono text-[11px] text-purple-300 border border-purple-500/30">
+                        <span className="rounded-full bg-amber-500/20 backdrop-blur-md px-2.5 py-0.5 font-mono text-[11px] text-amber-300 border border-amber-500/30">
                           ลำดับที่ {album.sortOrder ?? 0}
                         </span>
                       </div>
@@ -833,7 +833,7 @@ export default function AdminDashboardClient({
           <div className="space-y-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl glass-panel p-5">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Layers className="h-5 w-5 text-purple-400" />
+                <Layers className="h-5 w-5 text-amber-400" />
                 <div className="flex-1 sm:w-80">
                   <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
                     เลือกอัลบั้มที่ต้องการจัดการ
@@ -860,7 +860,7 @@ export default function AdminDashboardClient({
                   <Link
                     href={`/album/${selectedAlbum.slug}`}
                     target="_blank"
-                    className="flex items-center gap-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 px-3.5 py-2 text-xs font-mono text-purple-300 hover:bg-purple-500/30 transition-all font-semibold"
+                    className="flex items-center gap-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 px-3.5 py-2 text-xs font-mono text-amber-300 hover:bg-amber-500/30 transition-all font-semibold"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     <span>เปิดดูหน้าอัลบั้มเต็ม (Preview Full Album)</span>
@@ -877,7 +877,7 @@ export default function AdminDashboardClient({
                 e.preventDefault();
                 handleFilesSelected(e.dataTransfer.files);
               }}
-              className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-zinc-950/40 p-8 sm:p-12 text-center hover:border-purple-500/40 hover:bg-zinc-950/60 transition-all cursor-pointer"
+              className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-zinc-950/40 p-8 sm:p-12 text-center hover:border-amber-500/40 hover:bg-zinc-950/60 transition-all cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -889,7 +889,7 @@ export default function AdminDashboardClient({
                 onChange={(e) => handleFilesSelected(e.target.files)}
               />
 
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/10 border border-purple-500/20 mb-4 text-purple-300">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/20 mb-4 text-amber-300">
                 <UploadCloud className="h-7 w-7" />
               </div>
 
@@ -910,11 +910,11 @@ export default function AdminDashboardClient({
 
             {/* STAGED PHOTOS TRAY (รายการรูปที่รออัปโหลด) */}
             {stagedPhotos.length > 0 && (
-              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/[0.04] p-5 sm:p-6 space-y-4 shadow-2xl animate-fade-in">
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.04] p-5 sm:p-6 space-y-4 shadow-2xl animate-fade-in">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
                   <div>
                     <h4 className="font-serif text-base sm:text-lg font-medium text-white flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/20 text-purple-300 text-xs font-mono font-bold">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono font-bold">
                         {stagedPhotos.length}
                       </span>
                       <span>คิวรูปภาพที่เลือกไว้ (รอการยืนยันอัปโหลด)</span>
@@ -944,7 +944,7 @@ export default function AdminDashboardClient({
                       type="button"
                       disabled={isUploading || stagedPhotos.every((p) => p.status === 'success')}
                       onClick={handleStartUpload}
-                      className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 px-5 py-2 text-xs font-mono uppercase tracking-wider text-white font-bold transition-all shadow-lg shadow-purple-500/25 hover:scale-105"
+                      className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 disabled:opacity-50 px-5 py-2 text-xs font-mono uppercase tracking-wider text-white font-bold transition-all shadow-lg shadow-orange-500/25 hover:scale-105"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" />
                       <span>{isUploading ? 'กำลังอัปโหลด...' : `🚀 เริ่มอัปโหลด (${stagedPhotos.length} รูป)`}</span>
@@ -970,8 +970,8 @@ export default function AdminDashboardClient({
                         {/* Status Overlay */}
                         {item.status === 'uploading' && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-2 text-center">
-                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-400 border-t-transparent mb-1" />
-                            <span className="text-[10px] font-mono text-purple-300">กำลังส่ง...</span>
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-400 border-t-transparent mb-1" />
+                            <span className="text-[10px] font-mono text-amber-300">กำลังส่ง...</span>
                           </div>
                         )}
 
@@ -1231,8 +1231,8 @@ export default function AdminDashboardClient({
             </div>
 
             {/* Infographic Tips Box for Mobile Size */}
-            <div className="rounded-xl glass-panel p-5 border border-purple-500/20 bg-purple-500/[0.03] space-y-2">
-              <h4 className="font-serif text-sm font-semibold text-purple-300 flex items-center gap-2">
+            <div className="rounded-xl glass-panel p-5 border border-amber-500/20 bg-amber-500/[0.03] space-y-2">
+              <h4 className="font-serif text-sm font-semibold text-amber-300 flex items-center gap-2">
                 💡 คำแนะนำขนาดรูปภาพสำหรับแบนเนอร์แนวนอนบนมือถือ
               </h4>
               <p className="text-xs text-zinc-300 font-light leading-relaxed">
@@ -1273,7 +1273,7 @@ export default function AdminDashboardClient({
                             href={ann.linkUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-purple-400 hover:underline truncate max-w-[200px]"
+                            className="text-amber-400 hover:underline truncate max-w-[200px]"
                           >
                             🔗 {ann.linkUrl}
                           </a>
@@ -1334,7 +1334,7 @@ export default function AdminDashboardClient({
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                      <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300">
                         ลำดับที่ {faq.sortOrder}
                       </span>
                       <h4 className="font-serif text-base font-medium text-white">

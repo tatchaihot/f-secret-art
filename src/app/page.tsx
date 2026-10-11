@@ -20,23 +20,23 @@ export default async function HomePage() {
   const faqs = await getAllFaqs();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#060709] text-zinc-100 selection:bg-purple-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#060709] text-zinc-100 selection:bg-amber-500 selection:text-black">
       <Navbar />
 
       <main className="flex-1">
         {/* HERO SECTION */}
         <section className="relative overflow-hidden border-b border-white/[0.08] pt-20 pb-16 sm:pt-28 sm:pb-20">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-gradient-to-tr from-purple-600/20 via-indigo-600/15 to-pink-600/10 filter blur-[120px] pointer-events-none" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-gradient-to-tr from-amber-500/20 via-orange-500/15 to-rose-500/10 filter blur-[120px] pointer-events-none" />
 
           <div className="relative mx-auto max-w-7xl px-4 sm:px-8">
             <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 font-mono text-xs text-purple-300">
-                <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                <span>F-Secret AI Art · Bespoke Generative Studio</span>
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 font-mono text-xs text-amber-300">
+                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                <span>F-Secret AI Art · Bespoke Studio By Tatchai</span>
               </div>
 
               <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-[1.15]">
-                บริการรับสร้างภาพ AI สำหรับ <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-200">โปรไฟล์ บุคคล และแบรนด์</span>
+                บริการรับสร้างภาพ AI สำหรับ <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-orange-200 to-rose-200">โปรไฟล์ บุคคล และแบรนด์</span>
               </h1>
 
               <p className="text-base sm:text-lg text-zinc-300 leading-relaxed font-light max-w-2xl">
@@ -61,7 +61,7 @@ export default async function HomePage() {
         <section id="styles" className="mx-auto max-w-7xl px-4 py-20 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-10 gap-4">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-purple-400">
+              <span className="font-mono text-xs uppercase tracking-widest text-amber-400">
                 Featured Styles
               </span>
               <h2 className="font-serif text-2xl sm:text-4xl font-normal text-white mt-1">
@@ -74,9 +74,9 @@ export default async function HomePage() {
 
             <Link
               href="/galleries"
-              className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-4 py-2 font-mono text-xs text-purple-300 transition-all self-start md:self-end"
+              className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-4 py-2 font-mono text-xs text-amber-300 transition-all self-start md:self-end"
             >
-              <Layers className="h-3.5 w-3.5" />
+              <Layers className="h-3.5 w-3.5 text-amber-400" />
               <span>ดูแคตตาล็อกทั้งหมด ({allAlbums.length} สไตล์)</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -90,7 +90,7 @@ export default async function HomePage() {
                 <Link
                   key={album.id}
                   href={`/album/${album.slug}`}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-500/10"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-amber-500/40 hover:shadow-2xl hover:shadow-orange-500/10"
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-950">
                     <Image
@@ -104,7 +104,7 @@ export default async function HomePage() {
 
                     <div className="absolute top-3.5 right-3.5">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-mono text-zinc-200 border border-white/15">
-                        <Images className="h-3.5 w-3.5 text-purple-400" />
+                        <Images className="h-3.5 w-3.5 text-amber-400" />
                         {album.photoCount || 0} ตัวอย่าง
                       </span>
                     </div>
@@ -112,7 +112,7 @@ export default async function HomePage() {
 
                   <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
                     <div>
-                      <h3 className="font-serif text-xl font-medium text-white group-hover:text-purple-200 transition-colors line-clamp-1">
+                      <h3 className="font-serif text-xl font-medium text-white group-hover:text-amber-200 transition-colors line-clamp-1">
                         {album.title}
                       </h3>
                       {album.description && (
@@ -123,7 +123,7 @@ export default async function HomePage() {
                     </div>
 
                     <div className="flex items-center justify-between pt-4 border-t border-white/[0.06] text-xs font-mono text-zinc-300 group-hover:text-white transition-colors">
-                      <span className="text-purple-400 font-semibold group-hover:underline">
+                      <span className="text-amber-400 font-semibold group-hover:underline">
                         เข้าชมแกลเลอรีนี้
                       </span>
                       <ArrowRight className="h-4 w-4 transform transition-transform group-hover:translate-x-1" />
@@ -163,7 +163,7 @@ export default async function HomePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
               <div className="relative rounded-2xl glass-panel p-8 space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 font-mono text-lg font-bold">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono text-lg font-bold">
                   01
                 </div>
                 <h3 className="font-serif text-lg font-medium text-white">
@@ -187,7 +187,7 @@ export default async function HomePage() {
               </div>
 
               <div className="relative rounded-2xl glass-panel p-8 space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-lg font-bold">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 font-mono text-lg font-bold">
                   03
                 </div>
                 <h3 className="font-serif text-lg font-medium text-white">
@@ -212,7 +212,7 @@ export default async function HomePage() {
         <section id="faq" className="border-t border-white/[0.08] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-8">
             <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
-              <span className="font-mono text-xs uppercase tracking-widest text-purple-400">
+              <span className="font-mono text-xs uppercase tracking-widest text-amber-400">
                 Frequently Asked Questions
               </span>
               <h2 className="font-serif text-2xl sm:text-4xl font-normal text-white">
@@ -239,15 +239,18 @@ export default async function HomePage() {
       <footer className="border-t border-white/[0.08] bg-black py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-8 flex flex-col md:flex-row items-center justify-between gap-6 font-mono text-xs text-zinc-400">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
-            <span className="font-serif text-sm font-semibold text-white tracking-wider">
-              F-SECRET AI ART
-            </span>
+            <div className="flex items-center gap-2">
+              <Image src="/logo.png" alt="F-Secret Logo" width={26} height={26} className="object-contain" />
+              <span className="font-serif text-sm font-semibold text-white tracking-wider">
+                F-SECRET BY TATCHAI
+              </span>
+            </div>
             <span className="hidden sm:inline text-zinc-600">|</span>
             <span>LINE ID: <span className="text-emerald-400 font-bold">tatchaihot</span></span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6">
-            <Link href="/galleries" className="hover:text-white transition-colors">รวมแคตตาล็อก</Link>
+            <Link href="/galleries" className="hover:text-amber-300 transition-colors">รวมแคตตาล็อก</Link>
             <a href="#workflow" className="hover:text-white transition-colors">ขั้นตอนสั่งงาน</a>
             <a href="#guide" className="hover:text-white transition-colors">วิธีส่งรูป</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>

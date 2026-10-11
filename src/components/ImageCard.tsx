@@ -25,7 +25,7 @@ export default function ImageCard({
 
   return (
     <div
-      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-zinc-900 border border-white/[0.06] transition-all hover:border-purple-500/40 hover:shadow-xl hover:shadow-purple-500/10 cursor-pointer select-none active:scale-[0.98]"
+      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-zinc-900 border border-white/[0.06] transition-all hover:border-amber-500/40 hover:shadow-xl hover:shadow-orange-500/10 cursor-pointer select-none active:scale-[0.98]"
       onClick={onClick}
     >
       {/* 2:3 Aspect ratio portrait card (Uniform & elegant, matching mobile 2-column view) */}

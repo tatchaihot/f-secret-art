@@ -14,9 +14,9 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(120, 80, 220, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 100% 30%, rgba(220, 60, 140, 0.06) 0%, transparent 35%),
-    radial-gradient(circle at 0% 70%, rgba(50, 160, 240, 0.06) 0%, transparent 35%),
+    radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 100% 30%, rgba(244, 63, 94, 0.07) 0%, transparent 35%),
+    radial-gradient(circle at 0% 70%, rgba(251, 146, 60, 0.06) 0%, transparent 35%),
     radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px;
   background-attachment: fixed;

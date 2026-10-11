@@ -86,7 +86,7 @@ export function PhotoGuideSection() {
   return (
     <div className="space-y-8">
       <div className="text-center max-w-2xl mx-auto space-y-3">
-        <span className="font-mono text-xs uppercase tracking-widest text-purple-400">
+        <span className="font-mono text-xs uppercase tracking-widest text-amber-400">
           Photo Preparation Guide
         </span>
         <h2 className="font-serif text-2xl sm:text-4xl font-normal text-white">
@@ -114,7 +114,7 @@ export function PhotoGuideSection() {
 
           {/* Zoom Badge */}
           <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/75 backdrop-blur-md px-3.5 py-1.5 text-xs font-mono text-white border border-white/20 shadow-lg group-hover:scale-105 transition-transform">
-            <ZoomIn className="h-4 w-4 text-purple-400" />
+            <ZoomIn className="h-4 w-4 text-amber-400" />
             <span>แตะเพื่อซูมดูรูปเต็มจอ (ขยายอ่านง่าย)</span>
           </div>
         </div>
@@ -192,7 +192,7 @@ export function FaqSection({ faqs }: { faqs: FaqItem[] }) {
             key={item.id || index}
             className={`rounded-xl border transition-all ${
               isOpen
-                ? 'border-purple-500/40 bg-zinc-900/60 shadow-lg shadow-purple-500/5'
+                ? 'border-amber-500/40 bg-zinc-900/60 shadow-lg shadow-orange-500/5'
                 : 'border-white/[0.08] bg-zinc-950/40 hover:border-white/15'
             }`}
           >
@@ -206,7 +206,7 @@ export function FaqSection({ faqs }: { faqs: FaqItem[] }) {
               </span>
               <ChevronDown
                 className={`h-4 w-4 text-zinc-400 shrink-0 transition-transform duration-300 ${
-                  isOpen ? 'rotate-180 text-purple-400' : ''
+                  isOpen ? 'rotate-180 text-amber-400' : ''
                 }`}
               />
             </button>
@@ -237,7 +237,7 @@ export function LineContactCard() {
   return (
     <div className="relative overflow-hidden rounded-2xl glass-panel p-6 sm:p-10 shadow-2xl">
       <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-500/10 filter blur-3xl pointer-events-none" />
-      <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-purple-500/10 filter blur-3xl pointer-events-none" />
+      <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-amber-500/10 filter blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="flex-1 space-y-4 text-center md:text-left">

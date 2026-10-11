@@ -2,33 +2,41 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, MessageCircle, Lock, Menu, X, Layers, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
+import { MessageCircle, Lock, Menu, X, Layers, Image as ImageIcon } from 'lucide-react';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-black/80 backdrop-blur-xl transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-black/85 backdrop-blur-xl transition-all">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
-        {/* Studio Branding */}
+        {/* Studio Branding with Official Logo */}
         <Link href="/" className="group flex items-center gap-3">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 border border-white/15 group-hover:border-white/30 transition-all">
-            <Sparkles className="h-4 w-4 text-purple-300 group-hover:text-white transition-colors" />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-rose-500/15 border border-amber-500/25 group-hover:border-amber-400/50 transition-all p-1 shadow-md shadow-orange-500/10">
+            <Image
+              src="/logo.png"
+              alt="F-Secret By Tatchai"
+              width={34}
+              height={34}
+              className="object-contain filter drop-shadow group-hover:scale-105 transition-transform"
+              priority
+            />
           </div>
           <div className="flex flex-col">
             <span className="font-serif tracking-wide text-base font-semibold text-white uppercase">
-              F-Secret <span className="text-purple-400 font-sans font-light">AI Art</span>
+              F-Secret <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300 font-sans font-light">AI Art</span>
             </span>
-            <span className="text-[10px] tracking-widest text-zinc-400 uppercase font-mono -mt-0.5">
-              Bespoke AI Visuals
+            <span className="text-[9px] tracking-widest text-amber-200/70 uppercase font-mono -mt-0.5">
+              By Tatchai · Bespoke Studio
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation Links */}
         <div className="hidden md:flex items-center gap-6 font-mono text-xs text-zinc-300 uppercase tracking-wider">
-          <Link href="/galleries" className="hover:text-purple-300 transition-colors flex items-center gap-1">
-            <Layers className="h-3.5 w-3.5" />
+          <Link href="/galleries" className="hover:text-amber-300 transition-colors flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 text-amber-400" />
             <span>รวมแคตตาล็อก</span>
           </Link>
           <a href="/#styles" className="hover:text-white transition-colors">
@@ -105,9 +113,9 @@ export default function Navbar() {
             <Link
               href="/galleries"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold"
+              className="flex items-center gap-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 font-semibold"
             >
-              <Layers className="h-4 w-4" />
+              <Layers className="h-4 w-4 text-amber-400" />
               <span>ดูแคตตาล็อกทั้งหมด (All Galleries)</span>
             </Link>
 

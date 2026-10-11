@@ -30,14 +30,14 @@ export default async function GalleriesPage() {
             <span>กลับสู่หน้าแรก</span>
           </Link>
 
-          <span className="font-mono text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
+          <span className="font-mono text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
             ทั้งหมด {albums.length} สไตล์
           </span>
         </div>
 
         {/* Page Title */}
         <div className="max-w-3xl space-y-3 mb-12">
-          <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-purple-400">
+          <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-amber-400">
             <Sparkles className="h-3.5 w-3.5" />
             All AI Style Collections
           </div>
@@ -58,7 +58,7 @@ export default async function GalleriesPage() {
               <Link
                 key={album.id}
                 href={`/album/${album.slug}`}
-                className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-500/10"
+                className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-amber-500/40 hover:shadow-2xl hover:shadow-orange-500/10"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-950">
                   <Image
@@ -72,7 +72,7 @@ export default async function GalleriesPage() {
 
                   <div className="absolute top-3.5 right-3.5">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-mono text-zinc-200 border border-white/15">
-                      <Images className="h-3.5 w-3.5 text-purple-400" />
+                      <Images className="h-3.5 w-3.5 text-amber-400" />
                       {album.photoCount || 0} ตัวอย่าง
                     </span>
                   </div>
@@ -80,7 +80,7 @@ export default async function GalleriesPage() {
 
                 <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
                   <div>
-                    <h3 className="font-serif text-xl font-medium text-white group-hover:text-purple-200 transition-colors line-clamp-1">
+                    <h3 className="font-serif text-xl font-medium text-white group-hover:text-amber-200 transition-colors line-clamp-1">
                       {album.title}
                     </h3>
                     {album.description && (
@@ -91,7 +91,7 @@ export default async function GalleriesPage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-white/[0.06] text-xs font-mono text-zinc-300 group-hover:text-white transition-colors">
-                    <span className="text-purple-400 font-semibold group-hover:underline">
+                    <span className="text-amber-400 font-semibold group-hover:underline">
                       เข้าชมแกลเลอรีนี้
                     </span>
                     <ArrowRight className="h-4 w-4 transform transition-transform group-hover:translate-x-1" />
@@ -106,9 +106,12 @@ export default async function GalleriesPage() {
       {/* Footer */}
       <footer className="border-t border-white/[0.08] bg-black/60 py-10 mt-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-zinc-400">
-          <div>© {new Date().getFullYear()} F-SECRET AI ART. ALL RIGHTS RESERVED.</div>
+          <div className="flex items-center gap-2">
+            <Image src="/logo.png" alt="F-Secret Logo" width={24} height={24} className="object-contain" />
+            <span>© {new Date().getFullYear()} F-SECRET BY TATCHAI. ALL RIGHTS RESERVED.</span>
+          </div>
           <div className="flex items-center gap-6">
-            <Link href="/" className="hover:text-white transition-colors">หน้าแรก</Link>
+            <Link href="/" className="hover:text-amber-300 transition-colors">หน้าแรก</Link>
             <Link href="/admin" className="hover:text-white transition-colors">Admin Portal</Link>
           </div>
         </div>
