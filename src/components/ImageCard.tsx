@@ -37,41 +37,62 @@ export default function ImageCard({
   const rawUrl = photo.thumbUrl || photo.previewUrl || photo.originalUrl;
   const optimizedSrc = getOptimizedPhotoUrl(rawUrl, 600, 900);
 
+  // Micro-stagger for initial viewport photos (0ms to 280ms)
+  const staggerDelay = index < 8 ? `${(index % 8) * 35}ms` : '0ms';
+
   return (
     <div
-      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-[#141014] border border-amber-500/15 transition-all hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/15 cursor-pointer select-none active:scale-[0.98]"
+      className="cv-auto group relative overflow-hidden rounded-xl sm:rounded-2xl bg-[#141014] border border-amber-500/15 transition-all duration-300 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/15 cursor-pointer select-none active:scale-[0.98]"
       onClick={onClick}
     >
       {/* 2:3 Aspect ratio portrait card (Uniform & elegant, matching mobile 2-column view) */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#0e0c0f]">
-        {/* Progressive Blur Placeholder */}
-        {photo.blurDataUrl && !loaded && !hasError && (
+      <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#0d0b0f]">
+        
+        {/* 1. Amber-Gold Luxury Shimmer Skeleton: Active until this photo loads */}
+        {!loaded && !hasError && (
+          <div className="absolute inset-0 z-0 overflow-hidden bg-[#151118]">
+            {/* Subtle warm base pulse */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-stone-900/60 to-stone-950 animate-pulse" />
+            {/* Diagonal shimmer beam */}
+            <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-amber-400/12 to-transparent" />
+          </div>
+        )}
+
+        {/* 2. Low-Quality Blur Placeholder: Softly cross-fades out when loaded */}
+        {photo.blurDataUrl && !hasError && (
           <img
             src={photo.blurDataUrl}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover filter blur-lg scale-110 opacity-70 transition-opacity duration-700"
+            className={`absolute inset-0 h-full w-full object-cover filter blur-md scale-110 pointer-events-none transition-opacity duration-700 ease-out ${
+              loaded ? 'opacity-0' : 'opacity-80'
+            }`}
           />
         )}
 
+        {/* 3. Error Fallback */}
         {hasError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0e0c0f] p-4 text-center text-stone-500">
             <AlertCircle className="h-6 w-6 text-stone-600 mb-1" />
             <span className="text-[10px] font-mono">รูปภาพไม่พร้อมใช้งาน</span>
           </div>
         ) : (
+          /* 4. Main Photo: Independent, smooth cinematic reveal as soon as it arrives */
           <Image
             src={optimizedSrc}
             alt={photo.originalName || 'Gallery Photo'}
             fill
             unoptimized
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            loading={index < 6 ? 'eager' : 'lazy'}
-            priority={index < 2}
+            loading={index < 8 ? 'eager' : 'lazy'}
+            priority={index < 4}
             onLoad={() => setLoaded(true)}
             onError={() => setHasError(true)}
-            className={`object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${
-              loaded ? 'opacity-100' : 'opacity-0'
+            style={{ transitionDelay: staggerDelay }}
+            className={`object-cover transform transition-all duration-700 ease-out group-hover:scale-105 ${
+              loaded
+                ? 'opacity-100 scale-100 blur-0 translate-y-0'
+                : 'opacity-0 scale-105 blur-sm translate-y-1'
             }`}
           />
         )}

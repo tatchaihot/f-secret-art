@@ -220,40 +220,75 @@ export async function getAllAlbums(): Promise<Album[]> {
 
 export async function getAlbumBySlug(slug: string): Promise<(Album & { photos: Photo[] }) | null> {
   await ensureDbInitialized();
-  const albumRes = await db.execute({
-    sql: 'SELECT * FROM albums WHERE slug = ?',
-    args: [slug],
-  });
+  try {
+    const [albumRes, photosRes] = await db.batch([
+      {
+        sql: 'SELECT * FROM albums WHERE slug = ?',
+        args: [slug],
+      },
+      {
+        sql: `
+          SELECT * FROM photos 
+          WHERE albumId = (SELECT id FROM albums WHERE slug = ?) 
+          ORDER BY sortOrder ASC, createdAt DESC
+        `,
+        args: [slug],
+      },
+    ]);
 
-  if (albumRes.rows.length === 0) return null;
-  const album = toPlainRow<Album>(albumRes.rows[0]);
-
-  const photosRes = await db.execute({
-    sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
-    args: [album.id],
-  });
-
-  const photos = toPlainRows<Photo>(photosRes.rows);
-  return { ...album, photos };
+    if (albumRes.rows.length === 0) return null;
+    const album = toPlainRow<Album>(albumRes.rows[0]);
+    const photos = toPlainRows<Photo>(photosRes.rows);
+    return { ...album, photos };
+  } catch (err) {
+    console.error('Error in getAlbumBySlug batch:', err);
+    // Fallback: sequential query
+    const albumRes = await db.execute({
+      sql: 'SELECT * FROM albums WHERE slug = ?',
+      args: [slug],
+    });
+    if (albumRes.rows.length === 0) return null;
+    const album = toPlainRow<Album>(albumRes.rows[0]);
+    const photosRes = await db.execute({
+      sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
+      args: [album.id],
+    });
+    return { ...album, photos: toPlainRows<Photo>(photosRes.rows) };
+  }
 }
 
 export async function getAlbumById(id: string): Promise<(Album & { photos: Photo[] }) | null> {
   await ensureDbInitialized();
-  const albumRes = await db.execute({
-    sql: 'SELECT * FROM albums WHERE id = ?',
-    args: [id],
-  });
+  try {
+    const [albumRes, photosRes] = await db.batch([
+      {
+        sql: 'SELECT * FROM albums WHERE id = ?',
+        args: [id],
+      },
+      {
+        sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
+        args: [id],
+      },
+    ]);
 
-  if (albumRes.rows.length === 0) return null;
-  const album = toPlainRow<Album>(albumRes.rows[0]);
-
-  const photosRes = await db.execute({
-    sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
-    args: [id],
-  });
-
-  const photos = toPlainRows<Photo>(photosRes.rows);
-  return { ...album, photos };
+    if (albumRes.rows.length === 0) return null;
+    const album = toPlainRow<Album>(albumRes.rows[0]);
+    const photos = toPlainRows<Photo>(photosRes.rows);
+    return { ...album, photos };
+  } catch (err) {
+    console.error('Error in getAlbumById batch:', err);
+    const albumRes = await db.execute({
+      sql: 'SELECT * FROM albums WHERE id = ?',
+      args: [id],
+    });
+    if (albumRes.rows.length === 0) return null;
+    const album = toPlainRow<Album>(albumRes.rows[0]);
+    const photosRes = await db.execute({
+      sql: 'SELECT * FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC',
+      args: [id],
+    });
+    return { ...album, photos: toPlainRows<Photo>(photosRes.rows) };
+  }
 }
 
 export async function createAlbum(data: {

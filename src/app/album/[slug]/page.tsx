@@ -1,14 +1,24 @@
 import { notFound } from 'next/navigation';
-import { getAlbumBySlug } from '@/lib/db';
+import { getAlbumBySlug, getAllAlbums } from '@/lib/db';
 import Navbar from '@/components/Navbar';
 import AlbumClientView from './AlbumClientView';
 import type { Metadata } from 'next';
 
-
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 interface AlbumPageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  try {
+    const albums = await getAllAlbums();
+    return albums.map((album) => ({
+      slug: album.slug,
+    }));
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: AlbumPageProps): Promise<Metadata> {
