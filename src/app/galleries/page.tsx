@@ -101,7 +101,6 @@ export default async function GalleriesPage() {
           </div>
           <div className="flex items-center gap-6">
             <Link href="/" className="hover:text-amber-300 transition-colors">หน้าแรก</Link>
-            <Link href="/admin" className="hover:text-stone-200 transition-colors">Admin Portal</Link>
           </div>
         </div>
       </footer>

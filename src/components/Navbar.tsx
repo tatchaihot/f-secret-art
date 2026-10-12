@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MessageCircle, Lock, Menu, X, Layers, Image as ImageIcon } from 'lucide-react';
+import { MessageCircle, Menu, X, Layers } from 'lucide-react';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -57,11 +57,11 @@ export default function Navbar() {
         </div>
 
         {/* Direct Action Buttons & Mobile Hamburger */}
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Mobile Catalog Shortcut Button */}
           <Link
             href="/galleries"
-            className="md:hidden flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 font-mono text-[11px] text-amber-300 hover:bg-amber-500/25 transition-all"
+            className="md:hidden flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-3 py-1 font-mono text-[11px] text-amber-300 hover:bg-amber-500/25 transition-all"
           >
             <Layers className="h-3 w-3 text-amber-400" />
             <span>แคตตาล็อก</span>
@@ -77,15 +77,6 @@ export default function Navbar() {
             <MessageCircle className="h-3.5 w-3.5 fill-current" />
             <span>ทัก LINE สั่งงาน</span>
           </a>
-
-          {/* Admin Portal Shortcut */}
-          <Link
-            href="/admin"
-            className="flex items-center justify-center h-8 w-8 rounded-full bg-white/[0.05] hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all"
-            title="Admin Portal"
-          >
-            <Lock className="h-3.5 w-3.5" />
-          </Link>
 
           {/* Mobile Menu Toggle Button */}
           <button

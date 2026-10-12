@@ -244,9 +244,6 @@ export default async function HomePage() {
             <a href="https://line.me/ti/p/~tatchaihot" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
               แอดไลน์ทันที
             </a>
-            <Link href="/admin" className="hover:text-stone-200 transition-colors">
-              Admin Portal
-            </Link>
           </div>
         </div>
       </footer>
