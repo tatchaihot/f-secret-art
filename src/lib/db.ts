@@ -425,10 +425,44 @@ export async function createPhoto(data: {
   return photoRes.rows[0] as unknown as Photo;
 }
 
+async function refreshStaleAlbumCovers(albumIds: string[]): Promise<void> {
+  const uniqueIds = Array.from(new Set(albumIds.filter(Boolean)));
+  for (const albumId of uniqueIds) {
+    const albumRes = await db.execute({
+      sql: 'SELECT coverImage FROM albums WHERE id = ?',
+      args: [albumId],
+    });
+    const currentCover = albumRes.rows[0]?.coverImage as string | null | undefined;
+    if (!currentCover) continue;
+
+    const matchRes = await db.execute({
+      sql: 'SELECT id FROM photos WHERE albumId = ? AND (thumbUrl = ? OR previewUrl = ? OR originalUrl = ?) LIMIT 1',
+      args: [albumId, currentCover, currentCover, currentCover],
+    });
+    if (matchRes.rows.length > 0) continue;
+
+    const nextPhotoRes = await db.execute({
+      sql: 'SELECT thumbUrl FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC LIMIT 1',
+      args: [albumId],
+    });
+    const nextCover = (nextPhotoRes.rows[0]?.thumbUrl as string | undefined) || null;
+    await db.execute({
+      sql: 'UPDATE albums SET coverImage = ?, updatedAt = ? WHERE id = ?',
+      args: [nextCover, new Date().toISOString(), albumId],
+    });
+  }
+}
+
 export async function movePhotos(photoIds: string[], targetAlbumId: string): Promise<number> {
   if (!photoIds.length) return 0;
   await ensureDbInitialized();
   const placeholders = photoIds.map(() => '?').join(',');
+  const affectedRes = await db.execute({
+    sql: `SELECT DISTINCT albumId FROM photos WHERE id IN (${placeholders})`,
+    args: photoIds,
+  });
+  const sourceAlbumIds = affectedRes.rows.map((r) => String(r.albumId));
+
   const res = await db.execute({
     sql: `UPDATE photos SET albumId = ? WHERE id IN (${placeholders})`,
     args: [targetAlbumId, ...photoIds],
@@ -442,7 +476,7 @@ export async function movePhotos(photoIds: string[], targetAlbumId: string): Pro
   const targetAlbum = targetAlbumRes.rows[0];
   if (targetAlbum && !targetAlbum.coverImage) {
     const firstPhoto = await db.execute({
-      sql: 'SELECT thumbUrl FROM photos WHERE albumId = ? LIMIT 1',
+      sql: 'SELECT thumbUrl FROM photos WHERE albumId = ? ORDER BY sortOrder ASC, createdAt DESC LIMIT 1',
       args: [targetAlbumId],
     });
     if (firstPhoto.rows.length > 0) {
@@ -453,6 +487,7 @@ export async function movePhotos(photoIds: string[], targetAlbumId: string): Pro
     }
   }
 
+  await refreshStaleAlbumCovers(sourceAlbumIds);
   return res.rowsAffected;
 }
 
@@ -471,10 +506,18 @@ export async function deletePhotos(photoIds: string[]): Promise<number> {
   if (!photoIds.length) return 0;
   await ensureDbInitialized();
   const placeholders = photoIds.map(() => '?').join(',');
+  const affectedRes = await db.execute({
+    sql: `SELECT DISTINCT albumId FROM photos WHERE id IN (${placeholders})`,
+    args: photoIds,
+  });
+  const affectedAlbumIds = affectedRes.rows.map((r) => String(r.albumId));
+
   const res = await db.execute({
     sql: `DELETE FROM photos WHERE id IN (${placeholders})`,
     args: photoIds,
   });
+
+  await refreshStaleAlbumCovers(affectedAlbumIds);
   return res.rowsAffected;
 }
 

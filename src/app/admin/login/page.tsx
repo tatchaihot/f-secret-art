@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [passcode, setPasscode] = useState('');
+  const [showPasscode, setShowPasscode] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -58,14 +59,24 @@ export default function AdminLoginPage() {
             <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5">
               Admin Passcode
             </label>
-            <input
-              type="password"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              placeholder="กรอกรหัสผ่านหลังบ้าน"
-              required
-              className="w-full rounded-lg border border-white/10 bg-zinc-900/90 px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 font-mono"
-            />
+            <div className="relative">
+              <input
+                type={showPasscode ? 'text' : 'password'}
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="กรอกรหัสผ่านหลังบ้าน"
+                required
+                className="w-full rounded-lg border border-white/10 bg-zinc-900/90 px-4 py-2.5 pr-11 text-sm text-white placeholder-zinc-500 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasscode((prev) => !prev)}
+                aria-label={showPasscode ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-400 hover:text-white transition-colors"
+              >
+                {showPasscode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -73,10 +84,6 @@ export default function AdminLoginPage() {
               {error}
             </div>
           )}
-
-          <div className="rounded-lg bg-white/5 border border-white/5 p-3 text-[11px] font-mono text-zinc-400">
-            💡 รหัสผ่านเริ่มต้นสำหรับทดสอบ: <span className="text-white font-semibold">admin1234</span>
-          </div>
 
           <button
             type="submit"

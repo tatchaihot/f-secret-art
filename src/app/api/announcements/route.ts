@@ -8,6 +8,7 @@ import {
 } from '@/lib/db';
 import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
+import { revalidateHomePage } from '@/lib/revalidate';
 
 export async function GET() {
   try {
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
         sortOrder: Number(sortOrder) || 0,
       });
 
+      revalidateHomePage();
       return NextResponse.json({ success: true, announcement });
     } else {
       const body = await req.json();
@@ -72,6 +74,7 @@ export async function POST(req: Request) {
         sortOrder: Number(body.sortOrder) || 0,
       });
 
+      revalidateHomePage();
       return NextResponse.json({ success: true, announcement });
     }
   } catch (error: any) {
@@ -98,6 +101,7 @@ export async function PUT(req: Request) {
       sortOrder: Number(body.sortOrder) || 0,
     });
 
+    revalidateHomePage();
     return NextResponse.json({ success: true, announcement: updated });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -120,6 +124,7 @@ export async function DELETE(req: Request) {
     }
 
     const ok = await deleteAnnouncement(id);
+    revalidateHomePage();
     return NextResponse.json({ success: ok });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

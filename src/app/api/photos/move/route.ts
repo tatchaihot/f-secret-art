@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { movePhotos } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
+import { revalidateCatalogPages } from '@/lib/revalidate';
 
 export async function POST(req: Request) {
   const isAdmin = await verifyAdminSession();
@@ -20,8 +20,7 @@ export async function POST(req: Request) {
 
     const movedCount = await movePhotos(photoIds, targetAlbumId);
 
-    revalidatePath('/galleries');
-    revalidatePath('/');
+    revalidateCatalogPages();
 
     return NextResponse.json({ success: true, movedCount });
   } catch (error: any) {

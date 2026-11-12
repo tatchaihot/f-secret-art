@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || 'admin1234';
+const ADMIN_PASSCODE = (process.env.ADMIN_PASSCODE || 'admin1234').trim();
+
+function isHttpsRequest(req: Request): boolean {
+  const forwardedProto = req.headers.get('x-forwarded-proto');
+  if (forwardedProto) {
+    return forwardedProto.split(',')[0].trim() === 'https';
+  }
+  return req.url.startsWith('https://');
+}
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -13,13 +21,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { passcode } = await req.json();
+    const body = await req.json();
+    const passcode = typeof body?.passcode === 'string' ? body.passcode.trim() : '';
 
-    if (passcode === ADMIN_PASSCODE) {
+    if (passcode && passcode === ADMIN_PASSCODE) {
       const cookieStore = await cookies();
       cookieStore.set('admin_session', 'authenticated_admin', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isHttpsRequest(req),
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 7, // 7 days

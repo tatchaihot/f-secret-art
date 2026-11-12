@@ -113,6 +113,7 @@ export default function AlbumCoverGrid({
           {photos.map((url, i) => (
             <div key={i} className="relative h-full w-full overflow-hidden bg-stone-900">
               <CoverThumb
+                key={`${i}-${url}`}
                 url={url}
                 alt={`${title} ตัวอย่างที่ ${i + 1}`}
                 width={360}
@@ -128,6 +129,7 @@ export default function AlbumCoverGrid({
         <div className="grid grid-cols-2 grid-rows-2 h-full w-full gap-[2px] bg-[#0b0a0d]">
           <div className="row-span-2 relative h-full w-full overflow-hidden bg-stone-900">
             <CoverThumb
+              key={`0-${photos[0]}`}
               url={photos[0]}
               alt={`${title} ตัวอย่างที่ 1`}
               width={480}
@@ -138,6 +140,7 @@ export default function AlbumCoverGrid({
           </div>
           <div className="col-start-2 row-start-1 relative h-full w-full overflow-hidden bg-stone-900">
             <CoverThumb
+              key={`1-${photos[1]}`}
               url={photos[1]}
               alt={`${title} ตัวอย่างที่ 2`}
               width={360}
@@ -148,6 +151,7 @@ export default function AlbumCoverGrid({
           </div>
           <div className="col-start-2 row-start-2 relative h-full w-full overflow-hidden bg-stone-900">
             <CoverThumb
+              key={`2-${photos[2]}`}
               url={photos[2]}
               alt={`${title} ตัวอย่างที่ 3`}
               width={360}
@@ -163,6 +167,7 @@ export default function AlbumCoverGrid({
           {photos.map((url, i) => (
             <div key={i} className="relative h-full w-full overflow-hidden bg-stone-900">
               <CoverThumb
+                key={`${i}-${url}`}
                 url={url}
                 alt={`${title} ตัวอย่างที่ ${i + 1}`}
                 width={360}
@@ -177,6 +182,7 @@ export default function AlbumCoverGrid({
         /* Single Photo Full Cover */
         <div className="relative h-full w-full overflow-hidden bg-stone-900">
           <CoverThumb
+            key={`0-${photos[0]}`}
             url={photos[0]}
             alt={title}
             width={640}

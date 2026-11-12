@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { getAllAlbums, createAlbum } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
+import { revalidateCatalogPages } from '@/lib/revalidate';
 
 export async function GET() {
   try {
@@ -28,8 +28,7 @@ export async function POST(req: Request) {
       sortOrder: Number(body.sortOrder) || 0,
     });
 
-    revalidatePath('/galleries');
-    revalidatePath('/');
+    revalidateCatalogPages(album?.slug ? [album.slug] : []);
 
     return NextResponse.json({ success: true, album });
   } catch (error: any) {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { getAlbumById, updateAlbum, deleteAlbum } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
+import { revalidateCatalogPages } from '@/lib/revalidate';
 
 export async function GET(
   req: Request,
@@ -34,11 +34,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Album not found' }, { status: 404 });
     }
 
-    revalidatePath('/galleries');
-    revalidatePath('/');
-    if (updated.slug) {
-      revalidatePath(`/album/${updated.slug}`);
-    }
+    revalidateCatalogPages(updated.slug ? [updated.slug] : []);
 
     return NextResponse.json({ success: true, album: updated });
   } catch (error: any) {
@@ -55,13 +51,13 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+    const existing = await getAlbumById(id);
     const deleted = await deleteAlbum(id);
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Album not found or already deleted' }, { status: 404 });
     }
 
-    revalidatePath('/galleries');
-    revalidatePath('/');
+    revalidateCatalogPages(existing?.slug ? [existing.slug] : []);
 
     return NextResponse.json({ success: true, message: 'Album deleted successfully' });
   } catch (error: any) {

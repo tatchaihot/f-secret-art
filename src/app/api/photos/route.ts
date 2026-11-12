@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { createPhoto, deletePhotos, getPhotosByIds } from '@/lib/db';
 import { processUploadedImage, deleteRemoteImage } from '@/lib/image-processor';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
+import { revalidateCatalogPages } from '@/lib/revalidate';
 
 export async function POST(req: Request) {
   const isAdmin = await verifyAdminSession();
@@ -56,8 +56,7 @@ export async function POST(req: Request) {
       fileSize: processed.fileSize,
     });
 
-    revalidatePath('/galleries');
-    revalidatePath('/');
+    revalidateCatalogPages();
 
     return NextResponse.json({ success: true, photo });
   } catch (error: any) {
@@ -91,8 +90,7 @@ export async function DELETE(req: Request) {
 
     const count = await deletePhotos(photoIds);
 
-    revalidatePath('/galleries');
-    revalidatePath('/');
+    revalidateCatalogPages();
 
     return NextResponse.json({ success: true, deletedCount: count });
   } catch (error: any) {

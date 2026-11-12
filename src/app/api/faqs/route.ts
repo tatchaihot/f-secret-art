@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllFaqs, createFaq, updateFaq, deleteFaq } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
+import { revalidateHomePage } from '@/lib/revalidate';
 
 export async function GET() {
   try {
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
       sortOrder: Number(body.sortOrder) || 0,
     });
 
+    revalidateHomePage();
     return NextResponse.json({ success: true, faq });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -49,6 +51,7 @@ export async function PUT(req: Request) {
       sortOrder: Number(body.sortOrder) || 0,
     });
 
+    revalidateHomePage();
     return NextResponse.json({ success: true, faq: updated });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -66,6 +69,7 @@ export async function DELETE(req: Request) {
     }
 
     const ok = await deleteFaq(id);
+    revalidateHomePage();
     return NextResponse.json({ success: ok });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
