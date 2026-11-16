@@ -8,6 +8,7 @@ import { Photo } from '@/lib/db';
 interface ImageCardProps {
   photo: Photo;
   index: number;
+  photoNumber?: number;
   onClick: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: (id: string) => void;
@@ -27,6 +28,7 @@ function getOptimizedPhotoUrl(url: string, width = 600, height = 900): string {
 export default function ImageCard({
   photo,
   index,
+  photoNumber,
   onClick,
   isFavorite = false,
   onToggleFavorite,
@@ -100,7 +102,14 @@ export default function ImageCard({
         {/* Hover / Touch Vignette Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b0a0d]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
 
-        {/* Favorite Heart Button (Discreet, compact, doesn't block portrait) */}
+        {/* Discreet Photo Number Badge for easy LINE reference */}
+        {typeof photoNumber === 'number' && (
+          <span className="absolute bottom-2 left-2 z-10 pointer-events-none rounded-md bg-black/65 backdrop-blur-sm px-1.5 py-0.5 font-mono text-[10px] text-stone-200 border border-white/10">
+            #{String(photoNumber).padStart(2, '0')}
+          </span>
+        )}
+
+        {/* Favorite Heart Button (Visible on touch devices, hover-enhanced on desktop) */}
         {onToggleFavorite && (
           <button
             type="button"
@@ -108,10 +117,10 @@ export default function ImageCard({
               e.stopPropagation();
               onToggleFavorite(photo.id);
             }}
-            className={`absolute top-2 right-2 z-10 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md active:scale-90 ${
+            className={`absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md active:scale-90 ${
               isFavorite
                 ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-rose-500/40 opacity-100'
-                : 'bg-black/60 text-stone-200 hover:bg-black/90 hover:text-white border border-amber-500/25 opacity-0 group-hover:opacity-100'
+                : 'bg-black/60 text-stone-200 hover:bg-black/90 hover:text-white border border-amber-500/25 opacity-85 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100'
             }`}
             title={isFavorite ? 'ลบออกจากรายการโปรด' : 'บันทึกรูปที่ชอบ'}
           >

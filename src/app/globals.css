@@ -108,3 +108,23 @@ body {
 .animate-shimmer {
   animation: shimmer 1.8s infinite ease-in-out;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Scoped drag-handle utilities: keep page scrolling & text selection intact outside handle */
+.drag-handle {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+}
+
+.drag-handle:active,
+html.is-dragging,
+html.is-dragging * {
+  cursor: grabbing !important;
+}

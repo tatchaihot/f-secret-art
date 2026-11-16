@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Copy, Check, ChevronDown, MessageCircle, Sparkles, ArrowRight, X, ZoomIn, Megaphone, Info, CheckCircle2, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { Copy, Check, ChevronDown, MessageCircle, ArrowRight, X, ZoomIn, Megaphone, CheckCircle2, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import { Announcement, FaqItem } from '@/lib/db';
+import { useModalBackHandler } from '@/lib/useModalBackHandler';
 
 // 1. Text & Banner Announcements Section (แยกประกาศข่าวสารอิสระ)
 export function AnnouncementNewsSection({ announcements }: { announcements: Announcement[] }) {
+  const [zoomedBanner, setZoomedBanner] = useState<{ url: string; title: string } | null>(null);
+  const closeZoomedBanner = useCallback(() => setZoomedBanner(null), []);
+  const requestCloseBanner = useModalBackHandler(Boolean(zoomedBanner), closeZoomedBanner, 'announcement-zoom');
+
   if (!announcements || announcements.length === 0) return null;
 
   return (
@@ -20,13 +25,19 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div
+        className={
+          announcements.length === 1
+            ? 'grid grid-cols-1 max-w-4xl mx-auto gap-4'
+            : 'grid grid-cols-1 md:grid-cols-2 gap-4'
+        }
+      >
         {announcements.map((item) => (
           <div
             key={item.id}
             className="flex flex-col justify-between rounded-xl glass-panel p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all shadow-lg shadow-black/50"
           >
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/30">
                   Announcement
@@ -36,31 +47,46 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
                 </span>
               </div>
 
-              <h4 className="font-serif text-base sm:text-lg font-medium text-white">
-                {item.title}
-              </h4>
+              {item.title?.trim() && (
+                <h4 className="font-serif text-base sm:text-lg font-medium text-white">
+                  {item.title}
+                </h4>
+              )}
 
-              {item.content && (
+              {item.content?.trim() && (
                 <p className="text-xs sm:text-sm text-stone-300 font-light leading-relaxed whitespace-pre-line">
                   {item.content}
                 </p>
               )}
 
-              {/* Optional Announcement Banner Image */}
+              {/* Optional Announcement Banner Image (object-contain so text on posters is never cropped) */}
               {item.imageUrl && (
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg bg-stone-950 mt-3 border border-amber-500/20">
-                  <Image
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoomedBanner({
+                      url: item.imageUrl!,
+                      title: item.title || 'ประกาศจากสตูดิโอ',
+                    })
+                  }
+                  className="group relative block w-full overflow-hidden rounded-lg bg-stone-950/80 mt-3 border border-amber-500/20 hover:border-amber-400/50 transition-all cursor-zoom-in"
+                  title="แตะเพื่อขยายดูภาพประกาศเต็มจอ"
+                >
+                  <img
                     src={item.imageUrl}
-                    alt={item.title}
-                    fill
-                    className="object-cover"
+                    alt={item.title || 'ประกาศจากสตูดิโอ'}
+                    className="w-full max-h-[420px] object-contain mx-auto"
                   />
-                </div>
+                  <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/75 backdrop-blur-md px-2.5 py-1 text-[10px] font-mono text-amber-200 border border-white/15 opacity-85 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn className="h-3 w-3 text-amber-400" />
+                    ขยายดูภาพ
+                  </span>
+                </button>
               )}
             </div>
 
             {item.linkUrl && (
-              <div className="pt-4 mt-2 border-t border-amber-500/15">
+              <div className="pt-4 mt-3 border-t border-amber-500/15">
                 <a
                   href={item.linkUrl}
                   target={item.linkUrl.startsWith('http') ? '_blank' : '_self'}
@@ -75,6 +101,33 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
           </div>
         ))}
       </div>
+
+      {/* Fullscreen Lightbox for Announcement Banner */}
+      {zoomedBanner && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={zoomedBanner.title}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-3 sm:p-6 animate-fade-in overscroll-contain"
+          onClick={requestCloseBanner}
+        >
+          <button
+            type="button"
+            onClick={requestCloseBanner}
+            className="absolute top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            title="ปิด (Close)"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="relative max-h-[92vh] max-w-[95vw] overflow-auto rounded-xl" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={zoomedBanner.url}
+              alt={zoomedBanner.title}
+              className="max-h-[90vh] w-auto object-contain rounded-lg shadow-2xl mx-auto"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -82,6 +135,8 @@ export function AnnouncementNewsSection({ announcements }: { announcements: Anno
 // 2. Photo Preparation Guide Section (วิธีส่งรูปถ่ายก่อนหน้า FAQ)
 export function PhotoGuideSection() {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const closeGuideZoom = useCallback(() => setIsZoomOpen(false), []);
+  const requestCloseGuideZoom = useModalBackHandler(isZoomOpen, closeGuideZoom, 'photo-guide-zoom');
 
   return (
     <div className="space-y-8">
@@ -152,18 +207,21 @@ export function PhotoGuideSection() {
       {/* Fullscreen Lightbox for Infographic */}
       {isZoomOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-2 sm:p-6 animate-fade-in"
-          onClick={() => setIsZoomOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="คำแนะนำการเตรียมรูปภาพ"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-2 sm:p-6 animate-fade-in overscroll-contain"
+          onClick={requestCloseGuideZoom}
         >
           <button
             type="button"
-            onClick={() => setIsZoomOpen(false)}
+            onClick={requestCloseGuideZoom}
             className="absolute top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
             title="ปิด (Close)"
           >
             <X className="h-5 w-5" />
           </button>
-          <div className="relative max-h-[92vh] max-w-[95vw] overflow-auto rounded-xl">
+          <div className="relative max-h-[92vh] max-w-[95vw] overflow-auto rounded-xl" onClick={(e) => e.stopPropagation()}>
             <img
               src="/guides/lora-guide.jpg"
               alt="คำแนะนำการเตรียมรูปภาพ"

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllAlbums, createAlbum } from '@/lib/db';
+import { getAllAlbums, createAlbum, reorderAlbums, getAlbumById } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 import { revalidateCatalogPages } from '@/lib/revalidate';
 
@@ -22,12 +22,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
     }
 
-    const album = await createAlbum({
+    const existingAlbums = body.placeAtTop ? await getAllAlbums() : [];
+    const createdAlbum = await createAlbum({
       title: body.title.trim(),
-      description: body.description?.trim(),
-      sortOrder: Number(body.sortOrder) || 0,
+      description: body.description,
+      clientName: body.clientName,
+      eventDate: body.eventDate,
+      isPrivate: body.isPrivate,
+      passcode: body.passcode,
+      sortOrder: body.placeAtTop ? 1 : Number(body.sortOrder) || existingAlbums.length + 1,
     });
 
+    if (body.placeAtTop && existingAlbums.length > 0) {
+      await reorderAlbums([createdAlbum.id, ...existingAlbums.map((a) => a.id)]);
+    }
+
+    const album = (await getAlbumById(createdAlbum.id)) || createdAlbum;
     revalidateCatalogPages(album?.slug ? [album.slug] : []);
 
     return NextResponse.json({ success: true, album });

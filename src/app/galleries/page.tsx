@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllAlbums } from '@/lib/db';
 import Navbar from '@/components/Navbar';
-import AlbumCoverGrid from '@/components/AlbumCoverGrid';
-import { ArrowLeft, ArrowRight, Images, Sparkles } from 'lucide-react';
+import CatalogBrowser from '@/components/CatalogBrowser';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const revalidate = 60;
@@ -50,46 +50,8 @@ export default async function GalleriesPage() {
           </p>
         </div>
 
-        {/* Full Grid of Albums */}
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {albums.map((album, idx) => {
-            return (
-              <Link
-                key={album.id}
-                href={`/album/${album.slug}`}
-                className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-300 hover:border-amber-500/50 hover:shadow-2xl hover:shadow-orange-500/15"
-              >
-                <AlbumCoverGrid
-                  previewPhotos={album.previewPhotos}
-                  coverImage={album.coverImage}
-                  title={album.title}
-                  photoCount={album.photoCount || 0}
-                  priority={idx < 3}
-                />
-
-                <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
-                  <div>
-                    <h3 className="font-serif text-xl font-medium text-white group-hover:text-amber-300 transition-colors line-clamp-1">
-                      {album.title}
-                    </h3>
-                    {album.description && (
-                      <p className="mt-2 text-xs sm:text-sm text-stone-400 line-clamp-2 leading-relaxed font-light">
-                        {album.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-amber-500/15 text-xs font-mono text-stone-300 group-hover:text-amber-200 transition-colors">
-                    <span className="text-amber-400 font-semibold group-hover:underline">
-                      เข้าชมแกลเลอรีนี้
-                    </span>
-                    <ArrowRight className="h-4 w-4 transform transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        {/* Full Grid of Albums with Search & Scroll-to-Top */}
+        <CatalogBrowser albums={albums} />
       </main>
 
       {/* Footer */}

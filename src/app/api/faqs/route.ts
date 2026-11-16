@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllFaqs, createFaq, updateFaq, deleteFaq } from '@/lib/db';
+import { getAllFaqs, createFaq, updateFaq, deleteFaq, reorderFaqs } from '@/lib/db';
 import { verifyAdminSession, unauthorizedResponse } from '@/lib/auth-guard';
 import { revalidateHomePage } from '@/lib/revalidate';
 
@@ -41,6 +41,19 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
+
+    if (Array.isArray(body?.orderedIds)) {
+      const orderedIds = body.orderedIds.filter(
+        (id: unknown): id is string => typeof id === 'string' && id.trim().length > 0
+      );
+      if (orderedIds.length === 0) {
+        return NextResponse.json({ success: false, error: 'orderedIds array is required' }, { status: 400 });
+      }
+      await reorderFaqs(orderedIds);
+      revalidateHomePage();
+      return NextResponse.json({ success: true });
+    }
+
     if (!body.id) {
       return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
     }

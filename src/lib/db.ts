@@ -296,32 +296,44 @@ export async function getAlbumById(id: string): Promise<(Album & { photos: Photo
   }
 }
 
+function normalizeNullableText(value: unknown): string | null {
+  if (typeof value !== 'string') return value === null ? null : null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export async function createAlbum(data: {
   title: string;
   slug?: string;
-  description?: string;
+  description?: string | null;
+  clientName?: string | null;
+  eventDate?: string | null;
+  isPrivate?: number | boolean;
+  passcode?: string | null;
   sortOrder?: number;
 }): Promise<Album> {
   await ensureDbInitialized();
   const id = 'alb_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
   const now = new Date().toISOString();
-  const slug =
-    (data.slug ||
-      data.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '')) +
-    '-' +
-    Math.random().toString(36).substring(2, 6);
+  const prefix = (data.slug || data.title)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+  const rand = Math.random().toString(36).substring(2, 6);
+  const slug = prefix ? `${prefix}-${rand}` : `style-${rand}`;
 
   await db.execute({
-    sql: `INSERT INTO albums (id, title, slug, description, sortOrder, createdAt, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO albums (id, title, slug, description, clientName, eventDate, isPrivate, passcode, sortOrder, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
-      data.title,
+      data.title.trim(),
       slug,
-      data.description || null,
+      normalizeNullableText(data.description),
+      normalizeNullableText(data.clientName),
+      normalizeNullableText(data.eventDate),
+      data.isPrivate ? 1 : 0,
+      normalizeNullableText(data.passcode),
       data.sortOrder ?? 0,
       now,
       now,
@@ -332,17 +344,28 @@ export async function createAlbum(data: {
   return created!;
 }
 
-export async function updateAlbum(id: string, data: Partial<Album>): Promise<Album | null> {
+export async function updateAlbum(id: string, data: Partial<Album> & { isPrivate?: number | boolean }): Promise<Album | null> {
   await ensureDbInitialized();
   const now = new Date().toISOString();
   const fields: string[] = [];
   const values: any[] = [];
 
-  const allowedFields = ['title', 'description', 'sortOrder', 'coverImage'];
+  const nullableTextFields = new Set(['description', 'clientName', 'eventDate', 'passcode']);
+  const allowedFields = ['title', 'description', 'clientName', 'eventDate', 'coverImage', 'isPrivate', 'passcode', 'sortOrder'];
   for (const key of allowedFields) {
     if (key in data) {
+      const raw = (data as any)[key];
+      if (raw === undefined) continue;
       fields.push(`${key} = ?`);
-      values.push((data as any)[key]);
+      if (key === 'title' && typeof raw === 'string') {
+        values.push(raw.trim());
+      } else if (key === 'isPrivate') {
+        values.push(raw ? 1 : 0);
+      } else if (nullableTextFields.has(key)) {
+        values.push(normalizeNullableText(raw));
+      } else {
+        values.push(raw);
+      }
     }
   }
 
@@ -358,6 +381,18 @@ export async function updateAlbum(id: string, data: Partial<Album>): Promise<Alb
   });
 
   return getAlbumById(id);
+}
+
+export async function reorderAlbums(orderedIds: string[]): Promise<void> {
+  if (!orderedIds.length) return;
+  await ensureDbInitialized();
+  const now = new Date().toISOString();
+  await db.batch(
+    orderedIds.map((id, index) => ({
+      sql: 'UPDATE albums SET sortOrder = ?, updatedAt = ? WHERE id = ?',
+      args: [index + 1, now, id],
+    }))
+  );
 }
 
 export async function deleteAlbum(id: string): Promise<boolean> {
@@ -530,6 +565,17 @@ export async function setAlbumCover(albumId: string, photoThumbUrl: string): Pro
   return res.rowsAffected > 0;
 }
 
+export async function reorderPhotos(albumId: string, orderedPhotoIds: string[]): Promise<void> {
+  if (!albumId || !orderedPhotoIds.length) return;
+  await ensureDbInitialized();
+  await db.batch(
+    orderedPhotoIds.map((photoId, index) => ({
+      sql: 'UPDATE photos SET sortOrder = ? WHERE id = ? AND albumId = ?',
+      args: [index + 1, photoId, albumId],
+    }))
+  );
+}
+
 // ----------------- ANNOUNCEMENT QUERIES -----------------
 export async function getAllAnnouncements(): Promise<Announcement[]> {
   await ensureDbInitialized();
@@ -555,9 +601,9 @@ export async function getAnnouncementById(id: string): Promise<Announcement | nu
 
 export async function createAnnouncement(data: {
   title: string;
-  content?: string;
-  imageUrl?: string;
-  linkUrl?: string;
+  content?: string | null;
+  imageUrl?: string | null;
+  linkUrl?: string | null;
   isActive?: boolean;
   sortOrder?: number;
 }): Promise<Announcement> {
@@ -570,10 +616,10 @@ export async function createAnnouncement(data: {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
-      data.title,
-      data.content || null,
-      data.imageUrl || null,
-      data.linkUrl || null,
+      (data.title || '').trim(),
+      normalizeNullableText(data.content),
+      normalizeNullableText(data.imageUrl),
+      normalizeNullableText(data.linkUrl),
       data.isActive !== false ? 1 : 0,
       data.sortOrder ?? 0,
       now,
@@ -589,11 +635,20 @@ export async function updateAnnouncement(id: string, data: Partial<Announcement>
   const fields: string[] = [];
   const values: any[] = [];
 
+  const nullableTextFields = new Set(['content', 'imageUrl', 'linkUrl']);
   const allowedFields = ['title', 'content', 'imageUrl', 'linkUrl', 'isActive', 'sortOrder'];
   for (const key of allowedFields) {
     if (key in data) {
+      const raw = (data as any)[key];
+      if (raw === undefined) continue;
       fields.push(`${key} = ?`);
-      values.push((data as any)[key]);
+      if (key === 'title') {
+        values.push(typeof raw === 'string' ? raw.trim() : '');
+      } else if (nullableTextFields.has(key)) {
+        values.push(normalizeNullableText(raw));
+      } else {
+        values.push(raw);
+      }
     }
   }
 
@@ -605,6 +660,17 @@ export async function updateAnnouncement(id: string, data: Partial<Announcement>
     args: values,
   });
   return getAnnouncementById(id);
+}
+
+export async function reorderAnnouncements(orderedIds: string[]): Promise<void> {
+  if (!orderedIds.length) return;
+  await ensureDbInitialized();
+  await db.batch(
+    orderedIds.map((id, index) => ({
+      sql: 'UPDATE announcements SET sortOrder = ? WHERE id = ?',
+      args: [index + 1, id],
+    }))
+  );
 }
 
 export async function deleteAnnouncement(id: string): Promise<boolean> {
@@ -688,6 +754,17 @@ export async function deleteFaq(id: string): Promise<boolean> {
     args: [id],
   });
   return res.rowsAffected > 0;
+}
+
+export async function reorderFaqs(orderedIds: string[]): Promise<void> {
+  if (!orderedIds.length) return;
+  await ensureDbInitialized();
+  await db.batch(
+    orderedIds.map((id, index) => ({
+      sql: 'UPDATE faqs SET sortOrder = ? WHERE id = ?',
+      args: [index + 1, id],
+    }))
+  );
 }
 
 // ----------------- SEED DATA -----------------

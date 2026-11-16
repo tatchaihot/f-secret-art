@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,13 +20,27 @@ import {
   HelpCircle,
   Megaphone,
   Eye,
+  EyeOff,
   X,
   Edit2,
   Maximize2,
-  Play
+  Play,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpToLine,
+  ArrowLeft,
+  ArrowRight,
+  Lock,
+  Copy,
+  Star,
 } from 'lucide-react';
 import { Album, Photo, Announcement, FaqItem } from '@/lib/db';
 import Lightbox from '@/components/Lightbox';
+import AlbumCoverGrid from '@/components/AlbumCoverGrid';
+import AlbumFormModal, { AlbumFormValues } from './components/AlbumFormModal';
+import AnnouncementModal from './components/AnnouncementModal';
+import FaqModal from './components/FaqModal';
 
 interface StagedPhoto {
   id: string;
@@ -34,7 +48,6 @@ interface StagedPhoto {
   previewUrl: string;
   size: number;
   status: 'pending' | 'uploading' | 'success' | 'error';
-  progress: number;
   error?: string;
 }
 
@@ -42,6 +55,18 @@ interface AdminDashboardClientProps {
   initialAlbums: (Album & { photoCount?: number })[];
   initialAnnouncements: Announcement[];
   initialFaqs: FaqItem[];
+}
+
+function arrayMove<T>(list: T[], fromIndex: number, toIndex: number): T[] {
+  const next = [...list];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
+
+function setRootDragging(active: boolean) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.classList.toggle('is-dragging', active);
 }
 
 export default function AdminDashboardClient({
@@ -54,25 +79,27 @@ export default function AdminDashboardClient({
   const [announcements, setAnnouncements] = useState(initialAnnouncements);
   const [faqs, setFaqs] = useState(initialFaqs);
 
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string>(
-    initialAlbums[0]?.id || ''
-  );
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>(initialAlbums[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'albums' | 'photos' | 'announcements' | 'faqs'>('albums');
 
-  // Album creation modal state (Simplified: only Title, Description, SortOrder)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newSortOrder, setNewSortOrder] = useState<number>(0);
-  const [isSubmittingAlbum, setIsSubmittingAlbum] = useState(false);
-
-  // Edit Album modal
+  // Unified Album Create / Edit modal state
+  const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+
+  // Drag-and-drop & live status for reordering
+  const [armedDragKey, setArmedDragKey] = useState<string | null>(null);
+  const [draggingAlbumId, setDraggingAlbumId] = useState<string | null>(null);
+  const [dragOverAlbumId, setDragOverAlbumId] = useState<string | null>(null);
+  const [isSavingAlbumOrder, setIsSavingAlbumOrder] = useState(false);
+  const [reorderStatus, setReorderStatus] = useState('');
 
   // Photos state for currently selected album
   const [currentPhotos, setCurrentPhotos] = useState<Photo[]>([]);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
+  const lastSelectedPhotoIdRef = useRef<string | null>(null);
+  const [draggingPhotoId, setDraggingPhotoId] = useState<string | null>(null);
+  const [dragOverPhotoId, setDragOverPhotoId] = useState<string | null>(null);
 
   // Lightbox preview inside admin
   const [adminLightboxOpen, setAdminLightboxOpen] = useState(false);
@@ -89,38 +116,73 @@ export default function AdminDashboardClient({
 
   // Announcement state
   const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
-  const [annTitle, setAnnTitle] = useState('');
-  const [annContent, setAnnContent] = useState('');
-  const [annLink, setAnnLink] = useState('');
-  const [annSortOrder, setAnnSortOrder] = useState(0);
-  const annFileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingAnn, setIsUploadingAnn] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [draggingAnnId, setDraggingAnnId] = useState<string | null>(null);
+  const [dragOverAnnId, setDragOverAnnId] = useState<string | null>(null);
 
   // FAQ modal state
   const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
-  const [faqQuestion, setFaqQuestion] = useState('');
-  const [faqAnswer, setFaqAnswer] = useState('');
-  const [faqSortOrder, setFaqSortOrder] = useState(0);
+  const [draggingFaqId, setDraggingFaqId] = useState<string | null>(null);
+  const [dragOverFaqId, setDragOverFaqId] = useState<string | null>(null);
 
   // Toast message
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
-  };
+  }, []);
+
+  // Ensure root grabbing class & drag state are always cleared on pointerup
+  useEffect(() => {
+    const clearArm = () => {
+      setArmedDragKey(null);
+      setRootDragging(false);
+    };
+    window.addEventListener('pointerup', clearArm);
+    window.addEventListener('pointercancel', clearArm);
+    return () => {
+      window.removeEventListener('pointerup', clearArm);
+      window.removeEventListener('pointercancel', clearArm);
+      setRootDragging(false);
+    };
+  }, []);
+
+  const syncAlbumPreviews = useCallback((albumId: string, photos: Photo[]) => {
+    const nextPreviews = photos
+      .map((p) => p.thumbUrl || p.previewUrl || p.originalUrl)
+      .filter(Boolean)
+      .slice(0, 4);
+    setAlbums((prev) =>
+      prev.map((a) =>
+        a.id === albumId
+          ? {
+              ...a,
+              photoCount: photos.length,
+              previewPhotos:
+                a.coverImage && nextPreviews.includes(a.coverImage)
+                  ? [a.coverImage, ...nextPreviews.filter((u) => u !== a.coverImage)].slice(0, 4)
+                  : nextPreviews,
+            }
+          : a
+      )
+    );
+  }, []);
 
   // Load photos for selected album
   const loadAlbumPhotos = async (albumId: string) => {
     if (!albumId) return;
     setIsLoadingPhotos(true);
     setSelectedPhotoIds([]);
+    lastSelectedPhotoIdRef.current = null;
     try {
       const res = await fetch(`/api/albums/${albumId}`);
       const data = await res.json();
       if (data.success && data.album) {
-        setCurrentPhotos(data.album.photos || []);
+        const loaded: Photo[] = data.album.photos || [];
+        setCurrentPhotos(loaded);
+        syncAlbumPreviews(albumId, loaded);
       }
     } catch {
       showToast('ไม่สามารถโหลดรูปภาพได้', 'error');
@@ -141,69 +203,113 @@ export default function AdminDashboardClient({
     router.refresh();
   };
 
-  // Create Album (Simplified)
-  const handleCreateAlbum = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-
-    setIsSubmittingAlbum(true);
+  // ---------------- ALBUMS CRUD & REORDER ----------------
+  const persistAlbumOrder = async (nextAlbums: (Album & { photoCount?: number })[], announcementText: string) => {
+    const normalized = nextAlbums.map((a, idx) => ({ ...a, sortOrder: idx + 1 }));
+    setAlbums(normalized);
+    setReorderStatus(announcementText);
+    setIsSavingAlbumOrder(true);
     try {
-      const res = await fetch('/api/albums', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newTitle,
-          description: newDesc,
-          sortOrder: Number(newSortOrder) || 0,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setAlbums([...albums, data.album].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
-        setIsCreateModalOpen(false);
-        setNewTitle('');
-        setNewDesc('');
-        setNewSortOrder(0);
-        showToast('สร้างอัลบั้มใหม่เรียบร้อยแล้ว!');
-      } else {
-        showToast(data.error || 'สร้างอัลบั้มไม่สำเร็จ', 'error');
-      }
-    } catch {
-      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-    } finally {
-      setIsSubmittingAlbum(false);
-    }
-  };
-
-  // Update Album
-  const handleUpdateAlbum = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingAlbum) return;
-
-    try {
-      const res = await fetch(`/api/albums/${editingAlbum.id}`, {
+      const res = await fetch('/api/albums/reorder', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editingAlbum.title,
-          description: editingAlbum.description,
-          sortOrder: Number(editingAlbum.sortOrder) || 0,
-        }),
+        body: JSON.stringify({ orderedIds: normalized.map((a) => a.id) }),
       });
-
       const data = await res.json();
       if (data.success) {
-        setAlbums(albums.map((a) => (a.id === editingAlbum.id ? { ...a, ...data.album } : a)).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
-        setEditingAlbum(null);
-        showToast('บันทึกการแก้ไขอัลบั้มเรียบร้อยแล้ว');
+        showToast('บันทึกลำดับแคตตาล็อกเรียบร้อยแล้ว!');
+        router.refresh();
+      } else {
+        showToast(data.error || 'บันทึกลำดับไม่สำเร็จ', 'error');
       }
     } catch {
-      showToast('เกิดข้อผิดพลาดในการแก้ไข', 'error');
+      showToast('เกิดข้อผิดพลาดในการบันทึกลำดับ', 'error');
+    } finally {
+      setIsSavingAlbumOrder(false);
     }
   };
 
-  // Delete Album
+  const handleMoveAlbumIndex = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= albums.length) return;
+    const movedTitle = albums[fromIndex]?.title || 'อัลบั้ม';
+    const next = arrayMove(albums, fromIndex, toIndex);
+    persistAlbumOrder(next, `ย้าย "${movedTitle}" ไปอยู่ที่อันดับ ${toIndex + 1} จาก ${next.length}`);
+  };
+
+  const handleSaveAlbumModal = async (values: AlbumFormValues) => {
+    if (editingAlbum) {
+      try {
+        const res = await fetch(`/api/albums/${editingAlbum.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: values.title,
+            description: values.description,
+            clientName: values.clientName,
+            eventDate: values.eventDate,
+            isPrivate: values.isPrivate,
+            passcode: values.isPrivate ? values.passcode : '',
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.album) {
+          setAlbums((prev) =>
+            prev.map((a) =>
+              a.id === editingAlbum.id
+                ? {
+                    ...a,
+                    ...data.album,
+                    photoCount: a.photoCount,
+                    previewPhotos: a.previewPhotos,
+                  }
+                : a
+            )
+          );
+          setIsAlbumModalOpen(false);
+          setEditingAlbum(null);
+          showToast('บันทึกข้อมูลอัลบั้มเรียบร้อยแล้ว!');
+          router.refresh();
+        } else {
+          showToast(data.error || 'บันทึกการแก้ไขไม่สำเร็จ', 'error');
+        }
+      } catch {
+        showToast('เกิดข้อผิดพลาดในการแก้ไข', 'error');
+      }
+    } else {
+      try {
+        const res = await fetch('/api/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: values.title,
+            description: values.description,
+            clientName: values.clientName,
+            eventDate: values.eventDate,
+            isPrivate: values.isPrivate,
+            passcode: values.isPrivate ? values.passcode : '',
+            placeAtTop: values.placeAtTop,
+            sortOrder: values.placeAtTop ? 1 : albums.length + 1,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.album) {
+          const newAlb: Album = { ...data.album, photoCount: 0, previewPhotos: [] };
+          setAlbums((prev) => {
+            const next = values.placeAtTop ? [newAlb, ...prev] : [...prev, newAlb];
+            return next.map((a, idx) => ({ ...a, sortOrder: idx + 1 }));
+          });
+          setIsAlbumModalOpen(false);
+          showToast('สร้างอัลบั้มใหม่เรียบร้อยแล้ว!');
+          router.refresh();
+        } else {
+          showToast(data.error || 'สร้างอัลบั้มไม่สำเร็จ', 'error');
+        }
+      } catch {
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+      }
+    }
+  };
+
   const handleDeleteAlbum = async (albumId: string, title: string) => {
     if (!confirm(`คุณต้องการลบอัลบั้ม "${title}" และรูปภาพทั้งหมดในอัลบั้มนี้ใช่หรือไม่?`)) return;
 
@@ -218,48 +324,86 @@ export default function AdminDashboardClient({
           setCurrentPhotos([]);
         }
         showToast('ลบอัลบั้มเรียบร้อยแล้ว');
+        router.refresh();
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการลบอัลบั้ม', 'error');
     }
   };
 
-  // Handle Files Selected (Stage them in queue first)
+  const handleCopyAlbumLink = (slug: string, title: string) => {
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}/album/${slug}`;
+    navigator.clipboard.writeText(url);
+    showToast(`คัดลอกลิงก์ "${title}" แล้ว!`);
+  };
+
+  // ---------------- PHOTOS STAGE, PASTE, UPLOAD, MOVE, DELETE, REORDER ----------------
+  const stageImageFiles = useCallback(
+    (rawFiles: File[]) => {
+      if (!selectedAlbumId || rawFiles.length === 0) return;
+      const imageFiles = rawFiles.filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) {
+        showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+        return;
+      }
+
+      const newStaged: StagedPhoto[] = imageFiles.map((file) => ({
+        id: 'stg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        size: file.size,
+        status: 'pending',
+      }));
+
+      setStagedPhotos((prev) => [...prev, ...newStaged]);
+      showToast(`เพิ่ม ${newStaged.length} รูปลงในคิวแล้ว กด "เริ่มอัปโหลด" ได้เลยนะคะ`);
+    },
+    [selectedAlbumId, showToast]
+  );
+
   const handleFilesSelected = (files: FileList | null) => {
-    if (!files || files.length === 0 || !selectedAlbumId) return;
-
-    const newFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
-    if (newFiles.length === 0) {
-      showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
-      return;
-    }
-
-    const newStaged: StagedPhoto[] = newFiles.map((file) => ({
-      id: 'stg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
-      file,
-      previewUrl: URL.createObjectURL(file),
-      size: file.size,
-      status: 'pending',
-      progress: 0,
-    }));
-
-    setStagedPhotos((prev) => [...prev, ...newStaged]);
-    showToast(`เพิ่ม ${newStaged.length} รูปลงในคิวแล้ว ตรวจสอบรูปแล้วกด "เริ่มอัปโหลด" ได้เลยนะคะ`);
+    if (!files || files.length === 0) return;
+    stageImageFiles(Array.from(files));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Remove a single staged photo
+  // Support Ctrl+V pasting screenshots/images into Tab 2
+  useEffect(() => {
+    if (activeTab !== 'photos') return;
+    const onPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+      ) {
+        return;
+      }
+      const items = Array.from(e.clipboardData?.items || []);
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        stageImageFiles(files);
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [activeTab, stageImageFiles]);
+
   const handleRemoveStagedPhoto = (id: string) => {
     setStagedPhotos((prev) => {
       const target = prev.find((p) => p.id === id);
-      if (target?.previewUrl) {
-        URL.revokeObjectURL(target.previewUrl);
-      }
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
       return prev.filter((p) => p.id !== id);
     });
   };
 
-  // Clear all staged photos
   const handleClearStagedPhotos = () => {
     stagedPhotos.forEach((p) => {
       if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
@@ -267,15 +411,14 @@ export default function AdminDashboardClient({
     setStagedPhotos([]);
   };
 
-  // Start uploading staged photos concurrently (Parallel upload 4 streams simultaneously)
   const handleStartUpload = async () => {
     if (stagedPhotos.length === 0 || !selectedAlbumId || isUploading) return;
     setIsUploading(true);
 
     let successCount = 0;
+    const uploadedPhotos: Photo[] = [];
     const itemsToUpload = stagedPhotos.filter((p) => p.status !== 'success');
-    const CONCURRENCY = 4; // Upload 4 photos simultaneously for 4-5x speedup
-
+    const CONCURRENCY = 4;
     let nextIndex = 0;
 
     const uploadWorker = async () => {
@@ -284,7 +427,7 @@ export default function AdminDashboardClient({
         if (!item) break;
 
         setStagedPhotos((prev) =>
-          prev.map((p) => (p.id === item.id ? { ...p, status: 'uploading', progress: 50 } : p))
+          prev.map((p) => (p.id === item.id ? { ...p, status: 'uploading' } : p))
         );
 
         const formData = new FormData();
@@ -292,61 +435,85 @@ export default function AdminDashboardClient({
         formData.append('albumId', selectedAlbumId);
 
         try {
-          const res = await fetch('/api/photos', {
-            method: 'POST',
-            body: formData,
-          });
-
+          const res = await fetch('/api/photos', { method: 'POST', body: formData });
           const data = await res.json();
           if (data.success && data.photo) {
             successCount++;
+            uploadedPhotos.push(data.photo);
             setCurrentPhotos((prev) => [data.photo, ...prev]);
             setStagedPhotos((prev) =>
-              prev.map((p) => (p.id === item.id ? { ...p, status: 'success', progress: 100 } : p))
+              prev.map((p) => (p.id === item.id ? { ...p, status: 'success' } : p))
             );
           } else {
             setStagedPhotos((prev) =>
               prev.map((p) =>
-                p.id === item.id ? { ...p, status: 'error', progress: 100, error: data.error || 'ล้มเหลว' } : p
+                p.id === item.id ? { ...p, status: 'error', error: data.error || 'ล้มเหลว' } : p
               )
             );
           }
         } catch {
           setStagedPhotos((prev) =>
             prev.map((p) =>
-              p.id === item.id ? { ...p, status: 'error', progress: 100, error: 'เชื่อมต่อล้มเหลว' } : p
+              p.id === item.id ? { ...p, status: 'error', error: 'เชื่อมต่อล้มเหลว' } : p
             )
           );
         }
       }
     };
 
-    // Run workers in parallel
     const workers = Array.from(
       { length: Math.min(CONCURRENCY, itemsToUpload.length) },
       () => uploadWorker()
     );
-
     await Promise.all(workers);
 
-    setAlbums((prev) =>
-      prev.map((a) =>
-        a.id === selectedAlbumId
-          ? { ...a, photoCount: (a.photoCount || 0) + successCount }
-          : a
-      )
-    );
+    if (uploadedPhotos.length > 0) {
+      setCurrentPhotos((latest) => {
+        syncAlbumPreviews(selectedAlbumId, latest);
+        return latest;
+      });
+    }
 
     setIsUploading(false);
-    showToast(`🚀 อัปโหลดพร้อมกันสำเร็จแล้ว ${successCount} รูป!`);
+    showToast(`อัปโหลดสำเร็จแล้ว ${successCount} รูป!`);
+    router.refresh();
 
-    // Automatically remove successful items after 2 seconds
     setTimeout(() => {
       setStagedPhotos((prev) => prev.filter((p) => p.status !== 'success'));
     }, 2000);
   };
 
-  // Move Photos to another album
+  const persistPhotoOrder = async (nextPhotos: Photo[]) => {
+    if (!selectedAlbumId) return;
+    setCurrentPhotos(nextPhotos);
+    syncAlbumPreviews(selectedAlbumId, nextPhotos);
+    setReorderStatus(`อัปเดตลำดับรูปภาพในอัลบั้ม (${nextPhotos.length} รูป)`);
+    try {
+      const res = await fetch('/api/photos/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          albumId: selectedAlbumId,
+          orderedPhotoIds: nextPhotos.map((p) => p.id),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('บันทึกลำดับรูปภาพเรียบร้อยแล้ว!');
+        router.refresh();
+      } else {
+        showToast(data.error || 'บันทึกลำดับรูปภาพไม่สำเร็จ', 'error');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการบันทึกลำดับรูปภาพ', 'error');
+    }
+  };
+
+  const handleMovePhotoIndex = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= currentPhotos.length) return;
+    persistPhotoOrder(arrayMove(currentPhotos, fromIndex, toIndex));
+  };
+
   const handleMovePhotos = async () => {
     if (!targetAlbumId || selectedPhotoIds.length === 0) return;
     if (targetAlbumId === selectedAlbumId) {
@@ -359,29 +526,33 @@ export default function AdminDashboardClient({
       const res = await fetch('/api/photos/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          photoIds: selectedPhotoIds,
-          targetAlbumId,
-        }),
+        body: JSON.stringify({ photoIds: selectedPhotoIds, targetAlbumId }),
       });
 
       const data = await res.json();
       if (data.success) {
-        showToast(`ย้ายรูปภาพจำนวน ${selectedPhotoIds.length} รูปเรียบร้อยแล้ว!`);
-        setCurrentPhotos((prev) => prev.filter((p) => !selectedPhotoIds.includes(p.id)));
+        const remaining = currentPhotos.filter((p) => !selectedPhotoIds.includes(p.id));
+        const movedCount = selectedPhotoIds.length;
+        setCurrentPhotos(remaining);
         setSelectedPhotoIds([]);
-
+        lastSelectedPhotoIdRef.current = null;
         setAlbums((prev) =>
           prev.map((a) => {
             if (a.id === selectedAlbumId) {
-              return { ...a, photoCount: Math.max(0, (a.photoCount || 0) - selectedPhotoIds.length) };
+              return {
+                ...a,
+                photoCount: remaining.length,
+                previewPhotos: remaining.map((p) => p.thumbUrl || p.previewUrl || p.originalUrl).slice(0, 4),
+              };
             }
             if (a.id === targetAlbumId) {
-              return { ...a, photoCount: (a.photoCount || 0) + selectedPhotoIds.length };
+              return { ...a, photoCount: (a.photoCount || 0) + movedCount };
             }
             return a;
           })
         );
+        showToast(`ย้ายรูปภาพจำนวน ${movedCount} รูปเรียบร้อยแล้ว!`);
+        router.refresh();
       } else {
         showToast(data.error || 'ย้ายรูปภาพไม่สำเร็จ', 'error');
       }
@@ -392,7 +563,6 @@ export default function AdminDashboardClient({
     }
   };
 
-  // Delete Photos
   const handleDeletePhotos = async (ids: string[]) => {
     if (!confirm(`คุณแน่ใจว่าต้องการลบรูปที่เลือกจำนวน ${ids.length} รูปใช่หรือไม่?`)) return;
 
@@ -405,56 +575,68 @@ export default function AdminDashboardClient({
 
       const data = await res.json();
       if (data.success) {
-        setCurrentPhotos((prev) => prev.filter((p) => !ids.includes(p.id)));
-        setSelectedPhotoIds([]);
-        setAlbums((prev) =>
-          prev.map((a) =>
-            a.id === selectedAlbumId
-              ? { ...a, photoCount: Math.max(0, (a.photoCount || 0) - ids.length) }
-              : a
-          )
-        );
+        const remaining = currentPhotos.filter((p) => !ids.includes(p.id));
+        setCurrentPhotos(remaining);
+        setSelectedPhotoIds((prev) => prev.filter((id) => !ids.includes(id)));
+        lastSelectedPhotoIdRef.current = null;
+        syncAlbumPreviews(selectedAlbumId, remaining);
         showToast(`ลบรูปภาพเรียบร้อยแล้ว ${ids.length} รูป`);
+        router.refresh();
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการลบรูปภาพ', 'error');
     }
   };
 
-  // Set Album Cover
   const handleSetCover = async (photoThumbUrl: string) => {
     try {
       const res = await fetch('/api/photos/cover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          albumId: selectedAlbumId,
-          photoThumbUrl,
-        }),
+        body: JSON.stringify({ albumId: selectedAlbumId, photoThumbUrl }),
       });
 
       const data = await res.json();
       if (data.success) {
         setAlbums((prev) =>
-          prev.map((a) =>
-            a.id === selectedAlbumId ? { ...a, coverImage: photoThumbUrl } : a
-          )
+          prev.map((a) => {
+            if (a.id !== selectedAlbumId) return a;
+            const currentPreviews = a.previewPhotos || [];
+            const nextPreviews = [
+              photoThumbUrl,
+              ...currentPreviews.filter((u) => u !== photoThumbUrl),
+            ].slice(0, 4);
+            return { ...a, coverImage: photoThumbUrl, previewPhotos: nextPreviews };
+          })
         );
         showToast('ตั้งเป็นรูปปกอัลบั้มเรียบร้อยแล้ว!');
+        router.refresh();
       }
     } catch {
       showToast('ไม่สามารถเปลี่ยนรูปปกได้', 'error');
     }
   };
 
-  // Photo Selection
-  const toggleSelectPhoto = (id: string) => {
+  const toggleSelectPhoto = (id: string, shiftKey = false) => {
+    if (shiftKey && lastSelectedPhotoIdRef.current) {
+      const startIdx = currentPhotos.findIndex((p) => p.id === lastSelectedPhotoIdRef.current);
+      const endIdx = currentPhotos.findIndex((p) => p.id === id);
+      if (startIdx !== -1 && endIdx !== -1) {
+        const [minIdx, maxIdx] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)];
+        const rangeIds = currentPhotos.slice(minIdx, maxIdx + 1).map((p) => p.id);
+        setSelectedPhotoIds((prev) => Array.from(new Set([...prev, ...rangeIds])));
+        lastSelectedPhotoIdRef.current = id;
+        return;
+      }
+    }
+    lastSelectedPhotoIdRef.current = id;
     setSelectedPhotoIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
   const handleSelectAll = () => {
+    lastSelectedPhotoIdRef.current = null;
     if (selectedPhotoIds.length === currentPhotos.length) {
       setSelectedPhotoIds([]);
     } else {
@@ -462,46 +644,56 @@ export default function AdminDashboardClient({
     }
   };
 
-  // Announcement Handlers
-  const handleCreateAnnouncement = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!annTitle.trim()) {
-      showToast('กรุณาระบุหัวข้อประกาศ', 'error');
-      return;
+  // ---------------- ANNOUNCEMENTS CRUD & REORDER ----------------
+  const handleAnnouncementSaved = (saved: Announcement, isEdit: boolean) => {
+    if (isEdit) {
+      setAnnouncements((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+      showToast('บันทึกการแก้ไขประกาศเรียบร้อยแล้ว!');
+    } else {
+      setAnnouncements((prev) => [saved, ...prev]);
+      showToast('เพิ่มประกาศข่าวสารเรียบร้อยแล้ว!');
     }
+    setIsAnnModalOpen(false);
+    setEditingAnnouncement(null);
+    router.refresh();
+  };
 
-    const file = annFileInputRef.current?.files?.[0];
-    setIsUploadingAnn(true);
-    const formData = new FormData();
-    if (file) {
-      formData.append('file', file);
-    }
-    formData.append('title', annTitle.trim());
-    formData.append('content', annContent.trim());
-    formData.append('linkUrl', annLink.trim());
-    formData.append('sortOrder', String(annSortOrder));
-
+  const handleToggleAnnouncementActive = async (ann: Announcement) => {
+    const nextActive = ann.isActive === 1 ? false : true;
     try {
       const res = await fetch('/api/announcements', {
-        method: 'POST',
-        body: formData,
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ann.id, isActive: nextActive }),
+      });
+      const data = await res.json();
+      if (data.success && data.announcement) {
+        setAnnouncements((prev) => prev.map((a) => (a.id === ann.id ? data.announcement : a)));
+        showToast(nextActive ? 'เปิดแสดงประกาศบนหน้าเว็บแล้ว' : 'ซ่อนประกาศชั่วคราวแล้ว');
+        router.refresh();
+      }
+    } catch {
+      showToast('เปลี่ยนสถานะไม่สำเร็จ', 'error');
+    }
+  };
+
+  const persistAnnouncementOrder = async (nextList: Announcement[]) => {
+    const normalized = nextList.map((a, idx) => ({ ...a, sortOrder: idx + 1 }));
+    setAnnouncements(normalized);
+    setReorderStatus(`จัดเรียงประกาศแล้ว (${normalized.length} รายการ)`);
+    try {
+      const res = await fetch('/api/announcements', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds: normalized.map((a) => a.id) }),
       });
       const data = await res.json();
       if (data.success) {
-        setAnnouncements([data.announcement, ...announcements]);
-        setIsAnnModalOpen(false);
-        setAnnTitle('');
-        setAnnContent('');
-        setAnnLink('');
-        setAnnSortOrder(0);
-        showToast('เพิ่มประกาศข่าวสารเรียบร้อยแล้ว');
-      } else {
-        showToast(data.error || 'เกิดข้อผิดพลาดในการบันทึกประกาศ', 'error');
+        showToast('บันทึกลำดับประกาศเรียบร้อยแล้ว!');
+        router.refresh();
       }
     } catch {
-      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-    } finally {
-      setIsUploadingAnn(false);
+      showToast('บันทึกลำดับประกาศไม่สำเร็จ', 'error');
     }
   };
 
@@ -515,66 +707,77 @@ export default function AdminDashboardClient({
       });
       const data = await res.json();
       if (data.success) {
-        setAnnouncements(announcements.filter((a) => a.id !== id));
+        setAnnouncements((prev) => prev.filter((a) => a.id !== id));
         showToast('ลบประกาศเรียบร้อยแล้ว');
+        router.refresh();
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการลบ', 'error');
     }
   };
 
-  // FAQ Handlers
-  const handleSaveFaq = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!faqQuestion.trim() || !faqAnswer.trim()) return;
-
+  // ---------------- FAQ CRUD & REORDER ----------------
+  const handleSaveFaq = async (values: { question: string; answer: string; sortOrder: number }) => {
     if (editingFaq) {
-      // Edit existing FAQ
       try {
         const res = await fetch('/api/faqs', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingFaq.id,
-            question: faqQuestion,
-            answer: faqAnswer,
-            sortOrder: faqSortOrder,
+            question: values.question,
+            answer: values.answer,
+            sortOrder: values.sortOrder,
           }),
         });
         const data = await res.json();
-        if (data.success) {
-          setFaqs(faqs.map((f) => (f.id === editingFaq.id ? data.faq : f)));
+        if (data.success && data.faq) {
+          setFaqs((prev) => prev.map((f) => (f.id === editingFaq.id ? data.faq : f)));
           setIsFaqModalOpen(false);
           setEditingFaq(null);
           showToast('บันทึกคำถาม FAQ เรียบร้อยแล้ว');
+          router.refresh();
         }
       } catch {
         showToast('เกิดข้อผิดพลาดในการแก้ไข FAQ', 'error');
       }
     } else {
-      // Create new FAQ
       try {
         const res = await fetch('/api/faqs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: faqQuestion,
-            answer: faqAnswer,
-            sortOrder: faqSortOrder,
-          }),
+          body: JSON.stringify(values),
         });
         const data = await res.json();
-        if (data.success) {
-          setFaqs([...faqs, data.faq]);
+        if (data.success && data.faq) {
+          setFaqs((prev) => [...prev, data.faq]);
           setIsFaqModalOpen(false);
-          setFaqQuestion('');
-          setFaqAnswer('');
-          setFaqSortOrder(0);
           showToast('เพิ่มคำถาม FAQ ใหม่เรียบร้อยแล้ว');
+          router.refresh();
         }
       } catch {
         showToast('เกิดข้อผิดพลาดในการเพิ่ม FAQ', 'error');
       }
+    }
+  };
+
+  const persistFaqOrder = async (nextList: FaqItem[]) => {
+    const normalized = nextList.map((f, idx) => ({ ...f, sortOrder: idx + 1 }));
+    setFaqs(normalized);
+    setReorderStatus(`จัดเรียงคำถาม FAQ แล้ว (${normalized.length} ข้อ)`);
+    try {
+      const res = await fetch('/api/faqs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds: normalized.map((f) => f.id) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('บันทึกลำดับ FAQ เรียบร้อยแล้ว!');
+        router.refresh();
+      }
+    } catch {
+      showToast('บันทึกลำดับ FAQ ไม่สำเร็จ', 'error');
     }
   };
 
@@ -588,8 +791,9 @@ export default function AdminDashboardClient({
       });
       const data = await res.json();
       if (data.success) {
-        setFaqs(faqs.filter((f) => f.id !== id));
+        setFaqs((prev) => prev.filter((f) => f.id !== id));
         showToast('ลบคำถามเรียบร้อยแล้ว');
+        router.refresh();
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการลบคำถาม', 'error');
@@ -597,10 +801,14 @@ export default function AdminDashboardClient({
   };
 
   const selectedAlbum = albums.find((a) => a.id === selectedAlbumId);
-  const totalPhotosCount = albums.reduce((acc, a) => acc + (a.photoCount || 0), 0);
 
   return (
     <div className="min-h-screen bg-[#0b0a0d] text-stone-100 flex flex-col selection:bg-amber-500 selection:text-stone-950">
+      {/* Single polite live region for reorder announcements */}
+      <p role="status" className="sr-only">
+        {reorderStatus}
+      </p>
+
       {/* Toast Notification */}
       {toast && (
         <div
@@ -665,14 +873,14 @@ export default function AdminDashboardClient({
           <button
             type="button"
             onClick={() => setActiveTab('albums')}
-            className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'albums'
                 ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <FolderPlus className="h-4 w-4 text-amber-400" />
-            <span>1. อัลบั้ม/แคตตาล็อก ({albums.length})</span>
+            <span>1. แคตตาล็อก ({albums.length})</span>
           </button>
 
           <button
@@ -681,44 +889,44 @@ export default function AdminDashboardClient({
               setActiveTab('photos');
               if (selectedAlbumId) loadAlbumPhotos(selectedAlbumId);
             }}
-            className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'photos'
                 ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <UploadCloud className="h-4 w-4 text-emerald-400" />
-            <span>2. อัปโหลดรูป & ย้ายไฟล์</span>
+            <span>2. อัปโหลด & เรียงรูป</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('announcements')}
-            className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'announcements'
                 ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Megaphone className="h-4 w-4 text-amber-400" />
-            <span>3. ป้ายประกาศ & แนะนำรูป LoRA</span>
+            <span>3. ข่าวสาร & ประกาศสตูดิโอ ({announcements.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('faqs')}
-            className={`flex items-center gap-2 px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-3 font-mono text-xs uppercase tracking-wider border-b-2 transition-all ${
               activeTab === 'faqs'
                 ? 'border-amber-400 text-white font-medium'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <HelpCircle className="h-4 w-4 text-sky-400" />
-            <span>4. จัดการคำถามที่พบบ่อย (FAQ)</span>
+            <span>4. FAQ ({faqs.length})</span>
           </button>
         </div>
 
-        {/* TAB 1: ALBUM MANAGEMENT (SIMPLIFIED & SORTABLE) */}
+        {/* TAB 1: ALBUM MANAGEMENT WITH DRAG-AND-DROP REORDER */}
         {activeTab === 'albums' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -727,13 +935,17 @@ export default function AdminDashboardClient({
                   จัดการแคตตาล็อกสไตล์ภาพ ({albums.length} อัลบั้ม)
                 </h2>
                 <p className="text-xs font-mono text-zinc-400 mt-1">
-                  เพิ่ม/แก้ไขแคตตาล็อกสไตล์ภาพ พร้อมกำหนดลำดับการแสดงผล (เลขน้อยจะอยู่ด้านบนสุด)
+                  ใช้เมาส์ลากแถบ <span className="text-amber-300">⠿ ลากเพื่อย้ายลำดับ</span> หรือกดปุ่มลูกศรเพื่อเรียงอันดับ (อันดับ #1–#3 จะโชว์บนหน้าแรกอัตโนมัติ)
+                  {isSavingAlbumOrder && <span className="ml-2 text-amber-300">· กำลังบันทึกลำดับ...</span>}
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={() => {
+                  setEditingAlbum(null);
+                  setIsAlbumModalOpen(true);
+                }}
                 className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-mono uppercase tracking-widest text-black font-semibold hover:bg-zinc-200 transition-colors shadow-lg"
               >
                 <Plus className="h-4 w-4" />
@@ -743,32 +955,129 @@ export default function AdminDashboardClient({
 
             {/* Albums Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {albums.map((album) => {
-                const cover = album.coverImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';
+              {albums.map((album, idx) => {
+                const isDragging = draggingAlbumId === album.id;
+                const isDropTarget = dragOverAlbumId === album.id && draggingAlbumId !== album.id;
+                const dragKey = `album:${album.id}`;
 
                 return (
                   <div
                     key={album.id}
-                    className="flex flex-col rounded-2xl glass-panel overflow-hidden shadow-xl border border-white/[0.08]"
+                    draggable={armedDragKey === dragKey || draggingAlbumId === album.id}
+                    onDragStart={(e) => {
+                      if (armedDragKey !== dragKey) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setDraggingAlbumId(album.id);
+                      setRootDragging(true);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', album.id);
+                    }}
+                    onDragOver={(e) => {
+                      if (!draggingAlbumId) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverAlbumId !== album.id) {
+                        setDragOverAlbumId(album.id);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const sourceId = draggingAlbumId || e.dataTransfer.getData('text/plain');
+                      const fromIndex = albums.findIndex((a) => a.id === sourceId);
+                      const toIndex = idx;
+                      setDraggingAlbumId(null);
+                      setDragOverAlbumId(null);
+                      setArmedDragKey(null);
+                      setRootDragging(false);
+                      if (fromIndex !== -1 && fromIndex !== toIndex) {
+                        handleMoveAlbumIndex(fromIndex, toIndex);
+                      }
+                    }}
+                    onDragEnd={() => {
+                      setDraggingAlbumId(null);
+                      setDragOverAlbumId(null);
+                      setArmedDragKey(null);
+                      setRootDragging(false);
+                    }}
+                    className={`flex flex-col rounded-2xl glass-panel overflow-hidden shadow-xl transition-all ${
+                      isDragging
+                        ? 'opacity-50 scale-[0.98] border-amber-400/60'
+                        : isDropTarget
+                          ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-500/10'
+                          : 'border border-white/[0.08]'
+                    }`}
                   >
-                    <div className="relative aspect-[16/9] w-full bg-zinc-950">
-                      <Image
-                        src={cover}
-                        alt={album.title}
-                        fill
-                        className="object-cover"
+                    {/* Dedicated Drag Handle + Quick Reorder Bar */}
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-zinc-950/90 border-b border-white/[0.07]">
+                      <div
+                        className="drag-handle flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-mono text-zinc-300 hover:bg-white/10 hover:text-amber-300 transition-colors"
+                        onPointerDown={() => setArmedDragKey(dragKey)}
+                        title="กดค้างแล้วลากเพื่อย้ายตำแหน่งอัลบั้มนี้"
+                      >
+                        <GripVertical className="h-4 w-4 text-amber-400 shrink-0" />
+                        <span>ลากย้าย · #{idx + 1}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {idx < 3 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/35 px-2 py-0.5 text-[10px] font-mono text-amber-300 mr-1">
+                            <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                            <span>หน้าแรก</span>
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveAlbumIndex(idx, 0)}
+                          className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/5 text-zinc-300 hover:bg-amber-500/20 hover:text-amber-200 disabled:opacity-30"
+                          title="ดันขึ้นอันดับ #1 บนสุด"
+                        >
+                          <ArrowUpToLine className="h-3 w-3" />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveAlbumIndex(idx, idx - 1)}
+                          className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/15 disabled:opacity-30"
+                          title="เลื่อนขึ้น 1 อันดับ"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={idx === albums.length - 1}
+                          onClick={() => handleMoveAlbumIndex(idx, idx + 1)}
+                          className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/15 disabled:opacity-30"
+                          title="เลื่อนลง 1 อันดับ"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Real 4-Photo Cover Grid Preview */}
+                    <div className="relative">
+                      <AlbumCoverGrid
+                        previewPhotos={album.previewPhotos}
+                        coverImage={album.coverImage}
+                        title={album.title}
+                        photoCount={album.photoCount || 0}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                      <div className="absolute top-3 left-3">
-                        <span className="rounded-full bg-amber-500/20 backdrop-blur-md px-2.5 py-0.5 font-mono text-[11px] text-amber-300 border border-amber-500/30">
-                          ลำดับที่ {album.sortOrder ?? 0}
+                      {album.isPrivate === 1 && (
+                        <span
+                          className="absolute top-3 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-rose-950/90 border border-rose-500/40 px-2.5 py-1 text-[10px] font-mono text-rose-200 shadow"
+                          title={album.passcode ? `รหัสผ่าน: ${album.passcode}` : 'อัลบั้มส่วนตัว'}
+                        >
+                          <Lock className="h-3 w-3" />
+                          <span>ส่วนตัว{album.passcode ? ` · ${album.passcode}` : ''}</span>
                         </span>
-                      </div>
-
-                      <div className="absolute bottom-3 left-3 text-[11px] font-mono text-zinc-300">
-                        {album.photoCount || 0} ภาพตัวอย่าง
-                      </div>
+                      )}
                     </div>
 
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -776,14 +1085,18 @@ export default function AdminDashboardClient({
                         <h3 className="font-serif text-lg font-medium text-white line-clamp-1">
                           {album.title}
                         </h3>
-                        {album.description && (
-                          <p className="text-xs text-zinc-400 mt-1 line-clamp-2 font-light">
+                        {album.description ? (
+                          <p className="text-xs text-zinc-400 mt-1 line-clamp-2 whitespace-pre-line font-light leading-relaxed">
                             {album.description}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-zinc-600 mt-1 italic font-mono">
+                            (ยังไม่มีคำอธิบาย)
                           </p>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 pt-4 border-t border-white/[0.07]">
+                      <div className="flex items-center gap-1.5 pt-4 border-t border-white/[0.07]">
                         <button
                           type="button"
                           onClick={() => handleSelectAlbumForPhotos(album.id)}
@@ -795,18 +1108,30 @@ export default function AdminDashboardClient({
 
                         <button
                           type="button"
-                          onClick={() => setEditingAlbum(album)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white"
-                          title="แก้ไขชื่อ/ลำดับ"
+                          onClick={() => {
+                            setEditingAlbum(album);
+                            setIsAlbumModalOpen(true);
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-amber-500/20 text-zinc-300 hover:text-amber-200"
+                          title="แก้ไขชื่อ / คำอธิบาย / รหัสผ่าน"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAlbumLink(album.slug, album.title)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white"
+                          title="คัดลอกลิงก์อัลบั้ม"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
                         </button>
 
                         <Link
                           href={`/album/${album.slug}`}
                           target="_blank"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white"
-                          title="เปิดดูหน้าอัลบั้มเต็ม (Preview)"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white"
+                          title="เปิดดูหน้าอัลบั้มเต็ม"
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Link>
@@ -828,12 +1153,12 @@ export default function AdminDashboardClient({
           </div>
         )}
 
-        {/* TAB 2: PHOTOS & FILE MANAGER (WITH FULL ALBUM PREVIEW & LIGHTBOX) */}
+        {/* TAB 2: PHOTOS & FILE MANAGER (WITH CLIPBOARD PASTE, SHIFT-SELECT & DND REORDER) */}
         {activeTab === 'photos' && (
           <div className="space-y-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl glass-panel p-5">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Layers className="h-5 w-5 text-amber-400" />
+                <Layers className="h-5 w-5 text-amber-400 shrink-0" />
                 <div className="flex-1 sm:w-80">
                   <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
                     เลือกอัลบั้มที่ต้องการจัดการ
@@ -856,28 +1181,40 @@ export default function AdminDashboardClient({
               </div>
 
               {selectedAlbum && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingAlbum(selectedAlbum);
+                      setIsAlbumModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/15 px-3 py-2 text-xs font-mono text-zinc-200 transition-all"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    <span>แก้ไขคำอธิบาย</span>
+                  </button>
+
                   <Link
                     href={`/album/${selectedAlbum.slug}`}
                     target="_blank"
                     className="flex items-center gap-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 px-3.5 py-2 text-xs font-mono text-amber-300 hover:bg-amber-500/30 transition-all font-semibold"
                   >
                     <Eye className="h-3.5 w-3.5" />
-                    <span>เปิดดูหน้าอัลบั้มเต็ม (Preview Full Album)</span>
+                    <span>เปิดดูหน้าอัลบั้มเต็ม</span>
                     <ExternalLink className="h-3 w-3 ml-1" />
                   </Link>
                 </div>
               )}
             </div>
 
-            {/* Drag & Drop Upload Zone */}
+            {/* Drag & Drop + Paste Upload Zone */}
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
                 handleFilesSelected(e.dataTransfer.files);
               }}
-              className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-zinc-950/40 p-8 sm:p-12 text-center hover:border-amber-500/40 hover:bg-zinc-950/60 transition-all cursor-pointer"
+              className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-zinc-950/40 p-8 sm:p-10 text-center hover:border-amber-500/40 hover:bg-zinc-950/60 transition-all cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -894,21 +1231,21 @@ export default function AdminDashboardClient({
               </div>
 
               <h3 className="font-serif text-lg font-normal text-white">
-                ลากและวางรูปภาพที่นี่ หรือคลิกเพื่อเลือกไฟล์
+                ลากและวางรูปภาพที่นี่ · คลิกเลือกไฟล์ · หรือกด Ctrl+V วางรูปจากคลิปบอร์ด
               </h3>
               <p className="mt-1 text-xs font-mono text-zinc-400 max-w-md font-light">
-                ระบบจะทำการย่อขนาดและสร้าง WebP Thumbnail (600px, 1600px และ Blur LQIP) ให้อัตโนมัติทันที
+                ระบบจะอัปโหลดขึ้น Cloudinary และสร้าง Thumbnail + Blur Preview ให้ทันทีอัตโนมัติค่ะ
               </p>
 
               <button
                 type="button"
-                className="mt-6 rounded-full bg-white/10 hover:bg-white/20 px-5 py-2 text-xs font-mono text-white transition-colors border border-white/10"
+                className="mt-5 rounded-full bg-white/10 hover:bg-white/20 px-5 py-2 text-xs font-mono text-white transition-colors border border-white/10"
               >
                 เลือกรูปภาพจากเครื่อง
               </button>
             </div>
 
-            {/* STAGED PHOTOS TRAY (รายการรูปที่รออัปโหลด) */}
+            {/* STAGED PHOTOS TRAY */}
             {stagedPhotos.length > 0 && (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.04] p-5 sm:p-6 space-y-4 shadow-2xl animate-fade-in">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
@@ -921,12 +1258,8 @@ export default function AdminDashboardClient({
                     </h4>
                     <p className="text-xs font-mono text-zinc-400 mt-1">
                       ขนาดรวม:{' '}
-                      {(
-                        stagedPhotos.reduce((acc, curr) => acc + curr.size, 0) /
-                        1024 /
-                        1024
-                      ).toFixed(2)}{' '}
-                      MB · สามารถกด [×] บนรูปเพื่อเอาออก หรือกดเลือกไฟล์เพิ่มได้
+                      {(stagedPhotos.reduce((acc, curr) => acc + curr.size, 0) / 1024 / 1024).toFixed(2)}{' '}
+                      MB
                     </p>
                   </div>
 
@@ -944,15 +1277,14 @@ export default function AdminDashboardClient({
                       type="button"
                       disabled={isUploading || stagedPhotos.every((p) => p.status === 'success')}
                       onClick={handleStartUpload}
-                      className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 disabled:opacity-50 px-5 py-2 text-xs font-mono uppercase tracking-wider text-white font-bold transition-all shadow-lg shadow-orange-500/25 hover:scale-105"
+                      className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 disabled:opacity-50 px-5 py-2 text-xs font-mono uppercase tracking-wider text-white font-bold transition-all shadow-lg shadow-orange-500/25"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" />
-                      <span>{isUploading ? 'กำลังอัปโหลด...' : `🚀 เริ่มอัปโหลด (${stagedPhotos.length} รูป)`}</span>
+                      <span>{isUploading ? 'กำลังอัปโหลด...' : `เริ่มอัปโหลด (${stagedPhotos.length} รูป)`}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Staged Thumbnails Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 max-h-80 overflow-y-auto pr-1">
                   {stagedPhotos.map((item) => (
                     <div
@@ -960,14 +1292,9 @@ export default function AdminDashboardClient({
                       className="group relative rounded-xl overflow-hidden border border-white/10 bg-zinc-950/80 shadow-md"
                     >
                       <div className="relative aspect-square w-full">
-                        <img
-                          src={item.previewUrl}
-                          alt={item.file.name}
-                          className="h-full w-full object-cover"
-                        />
+                        <img src={item.previewUrl} alt={item.file.name} className="h-full w-full object-cover" />
                         <div className="absolute inset-0 bg-black/25 group-hover:bg-transparent transition-colors" />
 
-                        {/* Status Overlay */}
                         {item.status === 'uploading' && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 p-2 text-center">
                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-400 border-t-transparent mb-1" />
@@ -989,7 +1316,6 @@ export default function AdminDashboardClient({
                           </div>
                         )}
 
-                        {/* Remove button (only if not uploading) */}
                         {!isUploading && item.status !== 'success' && (
                           <button
                             type="button"
@@ -1002,14 +1328,11 @@ export default function AdminDashboardClient({
                         )}
                       </div>
 
-                      {/* File Info */}
                       <div className="p-2 text-[10px] font-mono text-zinc-400 truncate">
                         <p className="truncate text-zinc-200" title={item.file.name}>
                           {item.file.name}
                         </p>
-                        <span className="text-zinc-500">
-                          {(item.size / 1024).toFixed(0)} KB
-                        </span>
+                        <span className="text-zinc-500">{(item.size / 1024).toFixed(0)} KB</span>
                       </div>
                     </div>
                   ))}
@@ -1017,9 +1340,9 @@ export default function AdminDashboardClient({
               </div>
             )}
 
-            {/* BATCH ACTIONS TOOLBAR (ย้ายไฟล์ / ลบไฟล์) */}
+            {/* BATCH ACTIONS TOOLBAR */}
             <div className="sticky top-16 z-30 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-zinc-900/90 backdrop-blur-xl p-4 shadow-2xl">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={handleSelectAll}
@@ -1031,13 +1354,13 @@ export default function AdminDashboardClient({
                 </button>
 
                 <span className="text-xs font-mono text-zinc-400">
-                  เลือกอยู่ <span className="text-white font-bold">{selectedPhotoIds.length}</span> จาก {currentPhotos.length} รูป
+                  เลือกอยู่ <span className="text-white font-bold">{selectedPhotoIds.length}</span> จาก{' '}
+                  {currentPhotos.length} รูป · <span className="text-zinc-500">กด Shift+คลิก เลือกเป็นช่วง · ลากแถบ ⠿ เรียงลำดับรูปได้</span>
                 </span>
               </div>
 
               {selectedPhotoIds.length > 0 && (
                 <div className="flex flex-wrap items-center gap-3 animate-fade-in">
-                  {/* ⭐ MOVE PHOTOS TO ANOTHER ALBUM FEATURE */}
                   <div className="flex items-center gap-1.5 bg-black/60 rounded-lg p-1 border border-white/10">
                     <select
                       value={targetAlbumId}
@@ -1091,32 +1414,114 @@ export default function AdminDashboardClient({
               )}
             </div>
 
-            {/* Photos Grid with Lightbox on click */}
+            {/* Photos Grid with Reorder Drag Handles */}
             {isLoadingPhotos ? (
-              <div className="py-20 text-center font-mono text-xs text-zinc-500">
-                กำลังโหลดรูปภาพ...
-              </div>
+              <div className="py-20 text-center font-mono text-xs text-zinc-500">กำลังโหลดรูปภาพ...</div>
             ) : currentPhotos.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 p-16 text-center">
                 <ImageIcon className="h-10 w-10 text-zinc-600 mb-3" />
                 <p className="text-sm font-mono text-zinc-400">
-                  ยังไม่มีรูปภาพในอัลบั้มนี้ ลากไฟล์ใส่ด้านบนเพื่อเริ่มอัปโหลดได้เลยค่ะ
+                  ยังไม่มีรูปภาพในอัลบั้มนี้ ลากไฟล์ใส่ด้านบน หรือกด Ctrl+V วางรูปได้เลยค่ะ
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {currentPhotos.map((photo, index) => {
                   const isSelected = selectedPhotoIds.includes(photo.id);
+                  const isCover = selectedAlbum?.coverImage === photo.thumbUrl;
+                  const isDragging = draggingPhotoId === photo.id;
+                  const isDropTarget = dragOverPhotoId === photo.id && draggingPhotoId !== photo.id;
+                  const photoDragKey = `photo:${photo.id}`;
 
                   return (
                     <div
                       key={photo.id}
+                      draggable={armedDragKey === photoDragKey || draggingPhotoId === photo.id}
+                      onDragStart={(e) => {
+                        if (armedDragKey !== photoDragKey) {
+                          e.preventDefault();
+                          return;
+                        }
+                        setDraggingPhotoId(photo.id);
+                        setRootDragging(true);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', photo.id);
+                      }}
+                      onDragOver={(e) => {
+                        if (!draggingPhotoId) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragOverPhotoId !== photo.id) setDragOverPhotoId(photo.id);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const sourceId = draggingPhotoId || e.dataTransfer.getData('text/plain');
+                        const fromIndex = currentPhotos.findIndex((p) => p.id === sourceId);
+                        setDraggingPhotoId(null);
+                        setDragOverPhotoId(null);
+                        setArmedDragKey(null);
+                        setRootDragging(false);
+                        if (fromIndex !== -1 && fromIndex !== index) {
+                          handleMovePhotoIndex(fromIndex, index);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDraggingPhotoId(null);
+                        setDragOverPhotoId(null);
+                        setArmedDragKey(null);
+                        setRootDragging(false);
+                      }}
                       className={`group relative flex flex-col overflow-hidden rounded-xl border transition-all ${
-                        isSelected
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-950/20'
-                          : 'border-white/[0.08] bg-zinc-950 hover:border-white/20'
+                        isDragging
+                          ? 'opacity-50 scale-[0.98] border-amber-400'
+                          : isDropTarget
+                            ? 'ring-2 ring-amber-400 border-amber-400'
+                            : isSelected
+                              ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-950/20'
+                              : 'border-white/[0.08] bg-zinc-950 hover:border-white/20'
                       }`}
                     >
+                      {/* Top Reorder Handle & Left/Right Arrows */}
+                      <div className="flex items-center justify-between px-2 py-1 bg-zinc-900/90 border-b border-white/[0.06]">
+                        <div
+                          className="drag-handle flex items-center gap-1 text-[10px] font-mono text-zinc-400 hover:text-amber-300"
+                          onPointerDown={() => setArmedDragKey(photoDragKey)}
+                          title="ลากเพื่อจัดลำดับรูปภาพ"
+                        >
+                          <GripVertical className="h-3.5 w-3.5 text-amber-400" />
+                          <span>#{index + 1}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => handleMovePhotoIndex(index, 0)}
+                            className="p-0.5 text-zinc-400 hover:text-amber-300 disabled:opacity-25"
+                            title="ย้ายไปรูปแรกสุด"
+                          >
+                            <ArrowUpToLine className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => handleMovePhotoIndex(index, index - 1)}
+                            className="p-0.5 text-zinc-400 hover:text-white disabled:opacity-25"
+                            title="เลื่อนไปก่อนหน้า"
+                          >
+                            <ArrowLeft className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === currentPhotos.length - 1}
+                            onClick={() => handleMovePhotoIndex(index, index + 1)}
+                            className="p-0.5 text-zinc-400 hover:text-white disabled:opacity-25"
+                            title="เลื่อนไปถัดไป"
+                          >
+                            <ArrowRight className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="relative aspect-square w-full overflow-hidden bg-zinc-900">
                         <Image
                           src={photo.thumbUrl || photo.originalUrl}
@@ -1130,10 +1535,10 @@ export default function AdminDashboardClient({
                           }}
                         />
 
-                        {/* Selection Checkbox */}
+                        {/* Selection Checkbox (supports Shift+Click range) */}
                         <div
                           className="absolute top-2 left-2 z-10 cursor-pointer"
-                          onClick={() => toggleSelectPhoto(photo.id)}
+                          onClick={(e) => toggleSelectPhoto(photo.id, e.shiftKey)}
                         >
                           <div
                             className={`flex h-6 w-6 items-center justify-center rounded-md border backdrop-blur-md transition-all ${
@@ -1144,6 +1549,20 @@ export default function AdminDashboardClient({
                           >
                             <Check className="h-3.5 w-3.5 stroke-[3]" />
                           </div>
+                        </div>
+
+                        {/* Cover / Top-4 Quad Preview Badges */}
+                        <div className="absolute bottom-2 left-2 z-10 flex flex-wrap gap-1 pointer-events-none">
+                          {isCover && (
+                            <span className="rounded bg-amber-500/90 px-1.5 py-0.5 text-[9px] font-mono font-bold text-black shadow">
+                              ★ ปกหลัก
+                            </span>
+                          )}
+                          {index < 4 && (
+                            <span className="rounded bg-black/75 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-mono text-amber-200">
+                              ปกช่อง {index + 1}
+                            </span>
+                          )}
                         </div>
 
                         {/* Top Right Quick Actions */}
@@ -1163,7 +1582,7 @@ export default function AdminDashboardClient({
                           <button
                             type="button"
                             onClick={() => handleSetCover(photo.thumbUrl)}
-                            className="flex h-7 w-7 items-center justify-center rounded-md bg-black/70 hover:bg-black text-zinc-300 hover:text-white"
+                            className="flex h-7 w-7 items-center justify-center rounded-md bg-black/70 hover:bg-black text-zinc-300 hover:text-amber-300"
                             title="ตั้งเป็นรูปปกอัลบั้ม"
                           >
                             <ImageIcon className="h-3.5 w-3.5" />
@@ -1180,13 +1599,14 @@ export default function AdminDashboardClient({
                         </div>
                       </div>
 
-                      {/* Photo Metadata Footer */}
                       <div className="p-2.5 bg-zinc-950 text-[10px] font-mono text-zinc-400 space-y-0.5">
                         <p className="truncate text-zinc-200" title={photo.originalName}>
                           {photo.originalName}
                         </p>
                         <div className="flex justify-between text-zinc-500">
-                          <span>{photo.width}×{photo.height}</span>
+                          <span>
+                            {photo.width}×{photo.height}
+                          </span>
                           <span>{(photo.fileSize / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
                       </div>
@@ -1196,7 +1616,6 @@ export default function AdminDashboardClient({
               </div>
             )}
 
-            {/* Admin Fullscreen Lightbox Preview */}
             <Lightbox
               photos={currentPhotos}
               currentIndex={activePhotoIndex}
@@ -1207,96 +1626,208 @@ export default function AdminDashboardClient({
           </div>
         )}
 
-        {/* TAB 3: ANNOUNCEMENTS & LORA GUIDE MANAGER */}
+        {/* TAB 3: STUDIO NEWS & ANNOUNCEMENTS (CREATE, EDIT, IMAGE+TEXT, TOGGLE, REORDER) */}
         {activeTab === 'announcements' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 className="font-serif text-xl sm:text-2xl font-normal text-white">
-                  จัดการป้ายประกาศ & ข่าวสาร ({announcements.length} รายการ)
+                  ข่าวสารและประกาศจากสตูดิโอ ({announcements.length} รายการ)
                 </h2>
                 <p className="text-xs font-mono text-zinc-400 mt-1">
-                  เพิ่มประกาศข้อความ หรือแนบภาพแบนเนอร์แนวนอน เพื่อแจ้งข้อมูลและข่าวสารที่หน้าแรก
+                  เพิ่ม แก้ไข หรือซ่อนข่าวสาร/ประกาศหน้าแรกได้ครบทั้งแบบตัวหนังสืออย่างเดียว รูปภาพอย่างเดียว หรือใส่ทั้งคู่พร้อมกันค่ะ
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => setIsAnnModalOpen(true)}
+                onClick={() => {
+                  setEditingAnnouncement(null);
+                  setIsAnnModalOpen(true);
+                }}
                 className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-mono uppercase tracking-widest text-black font-semibold hover:bg-zinc-200 transition-colors shadow-lg"
               >
                 <Plus className="h-4 w-4" />
-                <span>+ เพิ่มประกาศใหม่</span>
+                <span>เพิ่มประกาศใหม่</span>
               </button>
             </div>
 
-            {/* Infographic Tips Box for Mobile Size */}
-            <div className="rounded-xl glass-panel p-5 border border-amber-500/20 bg-amber-500/[0.03] space-y-2">
-              <h4 className="font-serif text-sm font-semibold text-amber-300 flex items-center gap-2">
-                💡 คำแนะนำขนาดรูปภาพสำหรับแบนเนอร์แนวนอนบนมือถือ
-              </h4>
-              <p className="text-xs text-zinc-300 font-light leading-relaxed">
-                • <strong>อัตราส่วนที่แนะนำ:</strong> แนวนอนแบบ <strong>16:9</strong> (เช่น <strong>1200 x 675 px</strong> หรือ <strong>1920 x 1080 px</strong>) หรือ <strong>2:1</strong> (เช่น <strong>1200 x 600 px</strong>)<br />
-                • <strong>เหตุผล:</strong> บนจอมือถือ แนวนอนขนาดนี้จะกว้างพอดีจอ ไม่กินความสูงเกินไป และตัวหนังสือในภาพจะใหญ่คมชัดอ่านง่ายที่สุดค่ะ<br />
-                • <strong>ประกาศแบบข้อความ:</strong> ไม่จำเป็นต้องแนบรูปภาพ ระบบจะจัดแสดงเป็นการ์ดข้อความสวยงามหรูหราให้โดยอัตโนมัติ
-              </p>
-            </div>
+            {announcements.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 p-14 text-center text-xs font-mono text-zinc-400">
+                ยังไม่มีประกาศข่าวสาร กดปุ่ม &ldquo;เพิ่มประกาศใหม่&rdquo; ด้านบนเพื่อแสดงบนหน้าแรกได้เลยค่ะ
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {announcements.map((ann, idx) => {
+                  const isActive = ann.isActive !== 0;
+                  const isDragging = draggingAnnId === ann.id;
+                  const isDropTarget = dragOverAnnId === ann.id && draggingAnnId !== ann.id;
+                  const annDragKey = `ann:${ann.id}`;
 
-            {/* Announcements Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {announcements.map((ann) => (
-                <div key={ann.id} className="rounded-2xl glass-panel overflow-hidden border border-white/10 shadow-xl flex flex-col justify-between">
-                  {ann.imageUrl ? (
-                    <div className="relative aspect-[16/9] w-full bg-zinc-950 border-b border-white/5">
-                      <Image
-                        src={ann.imageUrl}
-                        alt={ann.title}
-                        fill
-                        className="object-contain sm:object-cover"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="p-5 flex items-start justify-between gap-4 flex-1">
-                    <div className="space-y-1.5 flex-1">
-                      <h4 className="font-serif text-base font-medium text-white">
-                        {ann.title}
-                      </h4>
-                      {ann.content && (
-                        <p className="text-xs text-zinc-300 font-light line-clamp-3 whitespace-pre-line leading-relaxed">
-                          {ann.content}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] font-mono text-zinc-400">
-                        <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">ลำดับที่ {ann.sortOrder}</span>
-                        {ann.linkUrl && (
-                          <a
-                            href={ann.linkUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-amber-400 hover:underline truncate max-w-[200px]"
+                  return (
+                    <div
+                      key={ann.id}
+                      draggable={armedDragKey === annDragKey || draggingAnnId === ann.id}
+                      onDragStart={(e) => {
+                        if (armedDragKey !== annDragKey) {
+                          e.preventDefault();
+                          return;
+                        }
+                        setDraggingAnnId(ann.id);
+                        setRootDragging(true);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', ann.id);
+                      }}
+                      onDragOver={(e) => {
+                        if (!draggingAnnId) return;
+                        e.preventDefault();
+                        if (dragOverAnnId !== ann.id) setDragOverAnnId(ann.id);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const sourceId = draggingAnnId || e.dataTransfer.getData('text/plain');
+                        const fromIndex = announcements.findIndex((a) => a.id === sourceId);
+                        setDraggingAnnId(null);
+                        setDragOverAnnId(null);
+                        setArmedDragKey(null);
+                        setRootDragging(false);
+                        if (fromIndex !== -1 && fromIndex !== idx) {
+                          persistAnnouncementOrder(arrayMove(announcements, fromIndex, idx));
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDraggingAnnId(null);
+                        setDragOverAnnId(null);
+                        setArmedDragKey(null);
+                        setRootDragging(false);
+                      }}
+                      className={`rounded-2xl glass-panel overflow-hidden shadow-xl flex flex-col justify-between transition-all ${
+                        isDragging
+                          ? 'opacity-50 scale-[0.98]'
+                          : isDropTarget
+                            ? 'ring-2 ring-amber-400 border-amber-400'
+                            : isActive
+                              ? 'border border-white/10'
+                              : 'border border-white/5 opacity-65'
+                      }`}
+                    >
+                      {/* Top Header: Drag Handle, Status Toggle, Move Arrows */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-zinc-950/90 border-b border-white/[0.07]">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="drag-handle flex items-center gap-1 text-[11px] font-mono text-zinc-400 hover:text-amber-300"
+                            onPointerDown={() => setArmedDragKey(annDragKey)}
+                            title="ลากเพื่อจัดลำดับประกาศ"
                           >
-                            🔗 {ann.linkUrl}
-                          </a>
-                        )}
+                            <GripVertical className="h-4 w-4 text-amber-400" />
+                            <span>#{idx + 1}</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAnnouncementActive(ann)}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-mono border transition-colors ${
+                              isActive
+                                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/25'
+                                : 'bg-zinc-800 border-white/15 text-zinc-400 hover:text-white'
+                            }`}
+                            title="คลิกเพื่อเปิด/ซ่อนประกาศนี้บนหน้าแรก"
+                          >
+                            {isActive ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                            <span>{isActive ? 'แสดงหน้าเว็บ' : 'ซ่อนอยู่'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => persistAnnouncementOrder(arrayMove(announcements, idx, idx - 1))}
+                            className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/15 disabled:opacity-30"
+                            title="เลื่อนขึ้น"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === announcements.length - 1}
+                            onClick={() => persistAnnouncementOrder(arrayMove(announcements, idx, idx + 1))}
+                            className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/15 disabled:opacity-30"
+                            title="เลื่อนลง"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {ann.imageUrl && (
+                        <div className="bg-zinc-950/80 border-b border-white/5 p-2 flex items-center justify-center">
+                          <img
+                            src={ann.imageUrl}
+                            alt={ann.title || 'ภาพประกาศ'}
+                            className="max-h-56 w-auto object-contain rounded"
+                          />
+                        </div>
+                      )}
+
+                      <div className="p-5 flex flex-col justify-between gap-4 flex-1">
+                        <div className="space-y-2">
+                          {ann.title?.trim() ? (
+                            <h4 className="font-serif text-base font-medium text-white">{ann.title}</h4>
+                          ) : (
+                            <span className="inline-block text-[10px] font-mono text-zinc-500">
+                              (ประกาศแบบไม่มีหัวข้อ)
+                            </span>
+                          )}
+                          {ann.content && (
+                            <p className="text-xs text-zinc-300 font-light whitespace-pre-line leading-relaxed">
+                              {ann.content}
+                            </p>
+                          )}
+                          {ann.linkUrl && (
+                            <a
+                              href={ann.linkUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block text-[11px] font-mono text-amber-400 hover:underline truncate max-w-full"
+                            >
+                              🔗 {ann.linkUrl}
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.07]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAnnouncement(ann);
+                              setIsAnnModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 px-3 py-1.5 text-xs font-mono text-white transition-colors"
+                          >
+                            <Edit2 className="h-3.5 w-3.5 text-amber-300" />
+                            <span>แก้ไข (ข้อความ/ภาพ)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAnnouncement(ann.id)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 shrink-0"
+                            title="ลบประกาศนี้"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAnnouncement(ann.id)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 shrink-0"
-                      title="ลบประกาศนี้"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 4: FAQ MANAGER */}
+        {/* TAB 4: FAQ MANAGER WITH DRAG-AND-DROP & ARROWS */}
         {activeTab === 'faqs' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1305,7 +1836,7 @@ export default function AdminDashboardClient({
                   จัดการคำถามที่พบบ่อย (FAQs) ({faqs.length} คำถาม)
                 </h2>
                 <p className="text-xs font-mono text-zinc-400 mt-1">
-                  แก้ไขคำถาม-คำตอบที่แสดงบนหน้าแรกของเว็บ เพื่อตอบข้อสงสัยให้ลูกค้าได้อย่างตรงจุด
+                  ลากแถบ ⠿ หรือกดลูกศร ↑ ↓ เพื่อสลับลำดับคำถามที่หน้าแรกได้เลยค่ะ
                 </p>
               </div>
 
@@ -1313,380 +1844,166 @@ export default function AdminDashboardClient({
                 type="button"
                 onClick={() => {
                   setEditingFaq(null);
-                  setFaqQuestion('');
-                  setFaqAnswer('');
-                  setFaqSortOrder(faqs.length + 1);
                   setIsFaqModalOpen(true);
                 }}
                 className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-xs font-mono uppercase tracking-widest text-black font-semibold hover:bg-zinc-200 transition-colors shadow-lg"
               >
                 <Plus className="h-4 w-4" />
-                <span>+ เพิ่มคำถามใหม่</span>
+                <span>เพิ่มคำถามใหม่</span>
               </button>
             </div>
 
-            {/* FAQs List */}
-            <div className="space-y-4">
-              {faqs.map((faq) => (
-                <div
-                  key={faq.id}
-                  className="rounded-xl glass-panel p-5 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300">
-                        ลำดับที่ {faq.sortOrder}
-                      </span>
-                      <h4 className="font-serif text-base font-medium text-white">
-                        {faq.question}
-                      </h4>
+            <div className="space-y-3">
+              {faqs.map((faq, idx) => {
+                const isDragging = draggingFaqId === faq.id;
+                const isDropTarget = dragOverFaqId === faq.id && draggingFaqId !== faq.id;
+                const faqDragKey = `faq:${faq.id}`;
+
+                return (
+                  <div
+                    key={faq.id}
+                    draggable={armedDragKey === faqDragKey || draggingFaqId === faq.id}
+                    onDragStart={(e) => {
+                      if (armedDragKey !== faqDragKey) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setDraggingFaqId(faq.id);
+                      setRootDragging(true);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', faq.id);
+                    }}
+                    onDragOver={(e) => {
+                      if (!draggingFaqId) return;
+                      e.preventDefault();
+                      if (dragOverFaqId !== faq.id) setDragOverFaqId(faq.id);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const sourceId = draggingFaqId || e.dataTransfer.getData('text/plain');
+                      const fromIndex = faqs.findIndex((f) => f.id === sourceId);
+                      setDraggingFaqId(null);
+                      setDragOverFaqId(null);
+                      setArmedDragKey(null);
+                      setRootDragging(false);
+                      if (fromIndex !== -1 && fromIndex !== idx) {
+                        persistFaqOrder(arrayMove(faqs, fromIndex, idx));
+                      }
+                    }}
+                    onDragEnd={() => {
+                      setDraggingFaqId(null);
+                      setDragOverFaqId(null);
+                      setArmedDragKey(null);
+                      setRootDragging(false);
+                    }}
+                    className={`rounded-xl glass-panel p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
+                      isDragging
+                        ? 'opacity-50 scale-[0.99]'
+                        : isDropTarget
+                          ? 'ring-2 ring-amber-400 border-amber-400'
+                          : 'border border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      <div
+                        className="drag-handle mt-1 flex items-center gap-1 rounded bg-amber-500/15 border border-amber-500/25 px-2 py-1 text-[10px] font-mono text-amber-300 shrink-0"
+                        onPointerDown={() => setArmedDragKey(faqDragKey)}
+                        title="ลากเพื่อจัดลำดับ"
+                      >
+                        <GripVertical className="h-3.5 w-3.5" />
+                        <span>#{idx + 1}</span>
+                      </div>
+
+                      <div className="space-y-1 flex-1">
+                        <h4 className="font-serif text-base font-medium text-white">{faq.question}</h4>
+                        <p className="text-xs sm:text-sm text-zinc-400 font-light whitespace-pre-line leading-relaxed">
+                          {faq.answer}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
-                      {faq.answer}
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingFaq(faq);
-                        setFaqQuestion(faq.question);
-                        setFaqAnswer(faq.answer);
-                        setFaqSortOrder(faq.sortOrder);
-                        setIsFaqModalOpen(true);
-                      }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white"
-                      title="แก้ไขคำถามนี้"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => persistFaqOrder(arrayMove(faqs, idx, idx - 1))}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/15 disabled:opacity-30"
+                        title="เลื่อนขึ้น"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteFaq(faq.id)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
-                      title="ลบคำถามนี้"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <button
+                        type="button"
+                        disabled={idx === faqs.length - 1}
+                        onClick={() => persistFaqOrder(arrayMove(faqs, idx, idx + 1))}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/15 disabled:opacity-30"
+                        title="เลื่อนลง"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingFaq(faq);
+                          setIsFaqModalOpen(true);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white"
+                        title="แก้ไขคำถามนี้"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFaq(faq.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
+                        title="ลบคำถามนี้"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* CREATE ALBUM MODAL (SIMPLIFIED: TITLE, DESC, SORT ORDER) */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-2xl glass-panel p-6 sm:p-8 shadow-2xl">
-            <h2 className="font-serif text-xl font-medium text-white mb-1">
-              สร้างอัลบั้ม / สไตล์ภาพใหม่
-            </h2>
-            <p className="text-xs font-mono text-zinc-400 mb-6 font-light">
-              ระบุชื่อสไตล์และรายละเอียดสำหรับโชว์ตัวอย่างผลงาน
-            </p>
+      {/* MODALS */}
+      <AlbumFormModal
+        isOpen={isAlbumModalOpen}
+        editingAlbum={editingAlbum}
+        onClose={() => {
+          setIsAlbumModalOpen(false);
+          setEditingAlbum(null);
+        }}
+        onSubmit={handleSaveAlbumModal}
+      />
 
-            <form onSubmit={handleCreateAlbum} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ชื่ออัลบั้ม / สไตล์ภาพ *
-                </label>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="เช่น Realistic AI Model, Minimalist Cafe, Cyberpunk"
-                  required
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
+      <AnnouncementModal
+        isOpen={isAnnModalOpen}
+        editingAnnouncement={editingAnnouncement}
+        onClose={() => {
+          setIsAnnModalOpen(false);
+          setEditingAnnouncement(null);
+        }}
+        onSaved={handleAnnouncementSaved}
+        onError={(msg) => showToast(msg, 'error')}
+      />
 
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  คำอธิบายสไตล์ภาพ
-                </label>
-                <textarea
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  rows={2}
-                  placeholder="อธิบายมูดแอนด์โทน จุดเด่น หรือแนวทางของภาพสไตล์นี้"
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ลำดับการแสดงผล (Sort Order)
-                </label>
-                <input
-                  type="number"
-                  value={newSortOrder}
-                  onChange={(e) => setNewSortOrder(Number(e.target.value))}
-                  placeholder="0, 1, 2... (เลขน้อยจะขึ้นก่อน)"
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none font-mono"
-                />
-                <span className="text-[10px] font-mono text-zinc-500 mt-1 block">
-                  ใส่อันดับ เช่น 1 สำหรับอันแรกสุด, 2 สำหรับอันถัดไป
-                </span>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-xs font-mono text-zinc-400 hover:text-white"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingAlbum}
-                  className="rounded-lg bg-white px-5 py-2 text-xs font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200 transition-colors disabled:opacity-50"
-                >
-                  {isSubmittingAlbum ? 'กำลังบันทึก...' : 'สร้างอัลบั้ม'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT ALBUM MODAL */}
-      {editingAlbum && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-2xl glass-panel p-6 sm:p-8 shadow-2xl">
-            <h2 className="font-serif text-xl font-medium text-white mb-4">
-              แก้ไขข้อมูลอัลบั้ม
-            </h2>
-
-            <form onSubmit={handleUpdateAlbum} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ชื่ออัลบั้ม
-                </label>
-                <input
-                  type="text"
-                  value={editingAlbum.title}
-                  onChange={(e) => setEditingAlbum({ ...editingAlbum, title: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  คำอธิบาย
-                </label>
-                <textarea
-                  value={editingAlbum.description || ''}
-                  onChange={(e) => setEditingAlbum({ ...editingAlbum, description: e.target.value })}
-                  rows={2}
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ลำดับการแสดงผล (Sort Order)
-                </label>
-                <input
-                  type="number"
-                  value={editingAlbum.sortOrder ?? 0}
-                  onChange={(e) => setEditingAlbum({ ...editingAlbum, sortOrder: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setEditingAlbum(null)}
-                  className="rounded-lg px-4 py-2 text-xs font-mono text-zinc-400 hover:text-white"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-white px-5 py-2 text-xs font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200"
-                >
-                  บันทึก
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE ANNOUNCEMENT MODAL */}
-      {isAnnModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
-          <div className="w-full max-w-lg rounded-2xl glass-panel p-6 sm:p-8 shadow-2xl my-8">
-            <h2 className="font-serif text-xl font-medium text-white mb-1">
-              เพิ่มประกาศข่าวสาร / ข้อความแจ้งเตือน
-            </h2>
-            <p className="text-xs font-mono text-zinc-400 mb-6 font-light">
-              สามารถระบุข้อความประกาศอย่างเดียว หรือแนบรูปภาพแบนเนอร์แนวนอน 16:9 เพิ่มเติมได้
-            </p>
-
-            <form onSubmit={handleCreateAnnouncement} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  หัวข้อประกาศ *
-                </label>
-                <input
-                  type="text"
-                  value={annTitle}
-                  onChange={(e) => setAnnTitle(e.target.value)}
-                  placeholder="เช่น เปิดรับคิวงานสร้างภาพ AI ประจำสัปดาห์นี้"
-                  required
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  เนื้อหาประกาศ (ข้อความรายละเอียด)
-                </label>
-                <textarea
-                  value={annContent}
-                  onChange={(e) => setAnnContent(e.target.value)}
-                  placeholder="พิมพ์ข้อความรายละเอียดประกาศ แจ้งข้อมูล ข่าวสาร หรือโปรโมชั่น..."
-                  rows={4}
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  รูปภาพแบนเนอร์ (ไม่บังคับ - แนะนำแนวนอน 16:9 เช่น 1200x675)
-                </label>
-                <input
-                  ref={annFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="w-full text-xs font-mono text-zinc-400 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ลิงก์ปลายทาง (ไม่บังคับ เช่น LINE หรือลิงก์ภายนอก)
-                </label>
-                <input
-                  type="text"
-                  value={annLink}
-                  onChange={(e) => setAnnLink(e.target.value)}
-                  placeholder="https://line.me/ti/p/~tatchaihot"
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ลำดับการแสดงผล (0 ขึ้นก่อน)
-                </label>
-                <input
-                  type="number"
-                  value={annSortOrder}
-                  onChange={(e) => setAnnSortOrder(Number(e.target.value))}
-                  placeholder="0, 1, 2..."
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsAnnModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-xs font-mono text-zinc-400 hover:text-white"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUploadingAnn}
-                  className="rounded-lg bg-white px-5 py-2 text-xs font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200 disabled:opacity-50"
-                >
-                  {isUploadingAnn ? 'กำลังบันทึก...' : 'บันทึกประกาศ'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* FAQ MODAL (ADD / EDIT) */}
-      {isFaqModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-          <div className="w-full max-w-lg rounded-2xl glass-panel p-6 sm:p-8 shadow-2xl">
-            <h2 className="font-serif text-xl font-medium text-white mb-4">
-              {editingFaq ? 'แก้ไขคำถาม FAQ' : 'เพิ่มคำถาม FAQ ใหม่'}
-            </h2>
-
-            <form onSubmit={handleSaveFaq} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  คำถาม (Question) *
-                </label>
-                <input
-                  type="text"
-                  value={faqQuestion}
-                  onChange={(e) => setFaqQuestion(e.target.value)}
-                  placeholder="เช่น สั่งทำภาพ AI ต้องเตรียมอะไรบ้าง?"
-                  required
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  คำตอบ (Answer) *
-                </label>
-                <textarea
-                  value={faqAnswer}
-                  onChange={(e) => setFaqAnswer(e.target.value)}
-                  rows={4}
-                  placeholder="รายละเอียดคำตอบที่ชัดเจนและเข้าใจง่ายสำหรับลูกค้า"
-                  required
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                  ลำดับการแสดงผล (Sort Order)
-                </label>
-                <input
-                  type="number"
-                  value={faqSortOrder}
-                  onChange={(e) => setFaqSortOrder(Number(e.target.value))}
-                  placeholder="1, 2, 3..."
-                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsFaqModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-xs font-mono text-zinc-400 hover:text-white"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-white px-5 py-2 text-xs font-mono uppercase tracking-wider text-black font-semibold hover:bg-zinc-200"
-                >
-                  บันทึกคำถาม
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <FaqModal
+        isOpen={isFaqModalOpen}
+        editingFaq={editingFaq}
+        defaultSortOrder={faqs.length + 1}
+        onClose={() => {
+          setIsFaqModalOpen(false);
+          setEditingFaq(null);
+        }}
+        onSave={handleSaveFaq}
+      />
     </div>
   );
 }

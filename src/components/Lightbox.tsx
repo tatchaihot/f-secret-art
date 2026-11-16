@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Download, Heart, ZoomIn, ZoomOut, AlertCircle } from 'lucide-react';
 import { Photo } from '@/lib/db';
+import { useModalBackHandler } from '@/lib/useModalBackHandler';
 
 interface LightboxProps {
   photos: Photo[];
@@ -30,6 +31,18 @@ export default function Lightbox({
   const [isZoomed, setIsZoomed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const lastTapRef = useRef<number>(0);
+  const ignoreTouchRef = useRef<boolean>(false);
+
+  const handleCloseReset = useCallback(() => {
+    setIsZoomed(false);
+    setPanOffset({ x: 0, y: 0 });
+    setTouchStart(null);
+    setTouchDelta({ x: 0, y: 0 });
+    onClose();
+  }, [onClose]);
+
+  const requestClose = useModalBackHandler(isOpen, handleCloseReset, 'lightbox');
 
   const handleNext = useCallback(() => {
     if (currentIndex < photos.length - 1) {
@@ -51,23 +64,43 @@ export default function Lightbox({
     }
   }, [currentIndex, onNavigate]);
 
-  const toggleZoom = () => {
+  const toggleZoom = useCallback(() => {
     setIsZoomed((prev) => {
       if (prev) {
         setPanOffset({ x: 0, y: 0 });
       }
       return !prev;
     });
-  };
+  }, []);
 
-  // Keyboard navigation
+  // Preload adjacent photos for instant swipe transitions
+  useEffect(() => {
+    if (!isOpen) return;
+    const neighbors = [photos[currentIndex + 1], photos[currentIndex - 1]];
+    for (const neighbor of neighbors) {
+      if (!neighbor) continue;
+      const url = neighbor.previewUrl || neighbor.originalUrl;
+      if (url) {
+        const preloader = new window.Image();
+        preloader.src = url;
+      }
+    }
+  }, [isOpen, currentIndex, photos]);
+
+  // Keyboard navigation & body scroll lock
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowRight') handleNext();
-      if (e.key === 'ArrowLeft') handlePrev();
+      if (e.key === 'Escape') requestClose();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNext();
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        handlePrev();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -77,26 +110,37 @@ export default function Lightbox({
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isOpen, onClose, handleNext, handlePrev]);
+  }, [isOpen, requestClose, handleNext, handlePrev]);
 
-  // Touch gesture handling (Swipe navigation + Pan when zoomed)
+  // Touch gesture handling (Swipe Left/Right/Up to navigate, Swipe Down to close, Pan when zoomed)
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    if (e.touches.length !== 1) return;
+    const clientX = e.touches[0].clientX;
+    const clientY = e.touches[0].clientY;
+
+    // Leave 20px screen edges clear so OS edge-back gesture works without fighting lightbox swipe
+    if (!isZoomed && (clientX < 20 || clientX > window.innerWidth - 20)) {
+      ignoreTouchRef.current = true;
+      setTouchStart(null);
+      return;
+    }
+
+    ignoreTouchRef.current = false;
+    setTouchStart({ x: clientX, y: clientY });
     setTouchDelta({ x: 0, y: 0 });
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart) return;
+    if (ignoreTouchRef.current || !touchStart || e.touches.length !== 1) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const deltaX = currentX - touchStart.x;
     const deltaY = currentY - touchStart.y;
 
     if (isZoomed) {
-      // Free panning when zoomed in
       setPanOffset((prev) => ({
-        x: prev.x + deltaX * 0.5,
-        y: prev.y + deltaY * 0.5,
+        x: prev.x + deltaX * 0.65,
+        y: prev.y + deltaY * 0.65,
       }));
       setTouchStart({ x: currentX, y: currentY });
     } else {
@@ -105,24 +149,57 @@ export default function Lightbox({
   };
 
   const onTouchEnd = () => {
-    if (isZoomed) {
-      setTouchStart(null);
+    if (ignoreTouchRef.current) {
+      ignoreTouchRef.current = false;
       return;
     }
+
+    if (isZoomed) {
+      // Double-tap detection while zoomed to zoom out
+      if (Math.abs(touchDelta.x) < 8 && Math.abs(touchDelta.y) < 8) {
+        const now = Date.now();
+        if (now - lastTapRef.current < 280) {
+          toggleZoom();
+          lastTapRef.current = 0;
+        } else {
+          lastTapRef.current = now;
+        }
+      }
+      setTouchStart(null);
+      setTouchDelta({ x: 0, y: 0 });
+      return;
+    }
+
     if (!touchStart) return;
 
     const minSwipeDistance = 45;
     const { x, y } = touchDelta;
+    const absX = Math.abs(x);
+    const absY = Math.abs(y);
 
-    // Vertical swipe down to close (forgiving diagonal threshold)
-    if (y > 90 && Math.abs(x) < 130) {
-      onClose();
-    }
-    // Horizontal swipe for next/prev
-    else if (x < -minSwipeDistance && Math.abs(y) < 130) {
-      handleNext();
-    } else if (x > minSwipeDistance && Math.abs(y) < 130) {
-      handlePrev();
+    // Tap (no drag): check double-tap to zoom
+    if (absX < 8 && absY < 8) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 280) {
+        toggleZoom();
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
+    } else if (absX >= absY) {
+      // Dominant horizontal swipe
+      if (x < -minSwipeDistance) {
+        handleNext();
+      } else if (x > minSwipeDistance) {
+        handlePrev();
+      }
+    } else {
+      // Dominant vertical swipe: Up -> Next photo, Down -> Close
+      if (y < -minSwipeDistance) {
+        handleNext();
+      } else if (y > 85) {
+        requestClose();
+      }
     }
 
     setTouchStart(null);
@@ -133,7 +210,10 @@ export default function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0a0d]/95 backdrop-blur-2xl transition-all duration-300 select-none animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`ภาพที่ ${currentIndex + 1} จาก ${photos.length}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0a0d]/95 backdrop-blur-2xl transition-all duration-300 select-none animate-fade-in overscroll-contain touch-none"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -143,8 +223,8 @@ export default function Lightbox({
         {/* Photo Counter */}
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs sm:text-sm tracking-widest text-stone-400">
-            <span className="text-amber-300 font-medium">
-              {String(currentIndex + 1).padStart(2, '0')}
+            <span className="text-amber-300 font-semibold">
+              #{String(currentIndex + 1).padStart(2, '0')}
             </span>
             {' / '}
             {String(photos.length).padStart(2, '0')}
@@ -196,8 +276,8 @@ export default function Lightbox({
           {/* Close Button */}
           <button
             type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/70 hover:bg-amber-500/20 text-stone-300 hover:text-white border border-amber-500/20 transition-all ml-2"
+            onClick={requestClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/70 hover:bg-amber-500/20 text-stone-300 hover:text-white border border-amber-500/20 transition-all ml-1 sm:ml-2"
             title="Close (Esc)"
           >
             <X className="h-5 w-5" />
@@ -207,12 +287,18 @@ export default function Lightbox({
 
       {/* Main Image Display Area */}
       <div
+        onClick={(e) => {
+          if (!isZoomed && e.target === e.currentTarget) {
+            requestClose();
+          }
+        }}
+        onDoubleClick={toggleZoom}
         className="relative flex h-full w-full items-center justify-center p-2 sm:p-8 overflow-hidden"
         style={{
           transform: !isZoomed
-            ? `translate(${touchDelta.x * 0.3}px, ${touchDelta.y * 0.5}px)`
+            ? `translate(${touchDelta.x * 0.35}px, ${touchDelta.y * 0.45}px)`
             : `translate(${panOffset.x}px, ${panOffset.y}px)`,
-          transition: touchStart ? 'none' : 'transform 0.3s ease-out',
+          transition: touchStart ? 'none' : 'transform 0.28s ease-out',
         }}
       >
         {/* Placeholder / Blur background while high-res loads */}
@@ -220,7 +306,7 @@ export default function Lightbox({
           <img
             src={currentPhoto.blurDataUrl}
             alt=""
-            className="absolute max-h-[90vh] max-w-[90vw] object-contain filter blur-md opacity-40"
+            className="absolute max-h-[90vh] max-w-[90vw] object-contain filter blur-md opacity-40 pointer-events-none"
           />
         )}
 
@@ -238,7 +324,7 @@ export default function Lightbox({
             onLoad={() => setImgLoaded(true)}
             onError={() => setHasError(true)}
             className={`max-h-[85vh] max-w-[95vw] sm:max-h-[90vh] sm:max-w-[85vw] object-contain transition-all duration-300 select-none ${
-              isZoomed ? 'scale-150 cursor-grab active:cursor-grabbing' : 'scale-100'
+              isZoomed ? 'scale-150 cursor-grab active:cursor-grabbing' : 'scale-100 cursor-zoom-in'
             } ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             draggable={false}
           />
@@ -275,9 +361,11 @@ export default function Lightbox({
       )}
 
       {/* Mobile Swipe Guidance Indicator */}
-      <div className="sm:hidden absolute bottom-4 inset-x-0 text-center pointer-events-none">
-        <span className="text-[11px] font-mono tracking-wider text-amber-200/90 bg-[#0b0a0d]/90 px-3.5 py-1.5 rounded-full border border-amber-500/30 shadow-xl">
-          {isZoomed ? '👆 ใช้นิ้วลากเลื่อนดูส่วนต่างๆ ของภาพ' : '👉 ใช้นิ้วปัดซ้าย-ขวา เพื่อเลื่อนดูรูป · ปัดลงเพื่อปิด'}
+      <div className="sm:hidden absolute bottom-4 inset-x-0 text-center pointer-events-none px-3">
+        <span className="inline-block text-[11px] font-mono tracking-wide text-amber-200/90 bg-[#0b0a0d]/90 px-3.5 py-1.5 rounded-full border border-amber-500/30 shadow-xl">
+          {isZoomed
+            ? '👆 ลากเลื่อนดูภาพ · แตะ 2 ครั้งเพื่อย่อ'
+            : '👉 ปัดซ้าย-ขวา หรือปัดขึ้นดูรูปถัดไป · ปัดลงเพื่อปิด'}
         </span>
       </div>
     </div>

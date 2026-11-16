@@ -103,7 +103,7 @@ export default async function HomePage() {
                         {album.title}
                       </h3>
                       {album.description && (
-                        <p className="mt-2 text-xs sm:text-sm text-stone-400 line-clamp-2 leading-relaxed font-light">
+                        <p className="mt-2 text-xs sm:text-sm text-stone-400 line-clamp-3 whitespace-pre-line leading-relaxed font-light">
                           {album.description}
                         </p>
                       )}

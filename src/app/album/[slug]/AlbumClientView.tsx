@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Lock, Heart, Download, Share2, Check, Sparkles, Filter, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Layers, Lock, Heart, Share2, Check, MessageCircle } from 'lucide-react';
 import ImageCard from '@/components/ImageCard';
 import Lightbox from '@/components/Lightbox';
 import { Album, Photo } from '@/lib/db';
@@ -25,6 +25,22 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [filterFavorites, setFilterFavorites] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showFloatingNav, setShowFloatingNav] = useState(false);
+
+  const photoNumberById = useMemo(() => {
+    const map = new Map<string, number>();
+    album.photos.forEach((p, idx) => map.set(p.id, idx + 1));
+    return map;
+  }, [album.photos]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setShowFloatingNav(window.scrollY > 320);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     // Load favorites from localStorage
@@ -71,7 +87,14 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
 
   const handleOrderViaLine = () => {
     const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-    const text = `สวัสดีค่ะ สนใจสั่งทำภาพ AI สไตล์ "${album.title}" ค่ะ (ลิงก์: ${currentUrl})`;
+    const favNumbers = favorites
+      .map((id) => photoNumberById.get(id))
+      .filter((n): n is number => typeof n === 'number')
+      .sort((a, b) => a - b)
+      .map((n) => `#${String(n).padStart(2, '0')}`);
+
+    const favDetail = favNumbers.length > 0 ? ` (รูปที่ชอบ: ${favNumbers.join(', ')})` : '';
+    const text = `สวัสดีค่ะ สนใจสั่งทำภาพ AI สไตล์ "${album.title}"${favDetail} ค่ะ (ลิงก์: ${currentUrl})`;
     if (typeof window !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setLineCopied(true);
@@ -79,6 +102,12 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
     }
     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
     window.open(lineUrl, '_blank');
+  };
+
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'instant' : 'smooth' });
   };
 
   const handleShare = () => {
@@ -133,10 +162,10 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
 
           <div className="mt-6">
             <Link
-              href="/"
+              href="/galleries"
               className="inline-flex items-center gap-1.5 text-xs font-mono text-stone-500 hover:text-amber-300 transition-colors"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Back to all galleries
+              <ArrowLeft className="h-3.5 w-3.5" /> กลับสู่รวมแคตตาล็อกสไตล์
             </Link>
           </div>
         </div>
@@ -210,43 +239,54 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
         </h1>
 
         {album.description && (
-          <p className="text-sm sm:text-base text-zinc-400 font-light leading-relaxed">
+          <p className="text-sm sm:text-base text-zinc-300 font-light leading-relaxed whitespace-pre-line">
             {album.description}
           </p>
         )}
       </div>
 
-      {/* Filter & Toolbar */}
-      <div className="sticky top-16 z-30 flex items-center justify-between border-y border-amber-500/15 bg-[#0b0a0d]/90 backdrop-blur-xl py-3.5 mb-8">
-        <div className="flex items-center gap-2 sm:gap-4">
+      {/* Filter & Sticky Navigation Toolbar */}
+      <div className="sticky top-16 z-30 -mx-3 px-3 sm:mx-0 sm:px-4 flex flex-wrap items-center justify-between gap-2 border-y border-amber-500/15 bg-[#0b0a0d]/92 backdrop-blur-xl py-3 mb-8 sm:rounded-xl">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
+          <Link
+            href="/galleries"
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-stone-900/75 hover:bg-amber-500/15 px-3 py-1.5 font-mono text-xs text-amber-200 transition-colors"
+            title="กลับไปหน้ารวมอัลบั้มทั้งหมด"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>รวมอัลบั้ม</span>
+          </Link>
+
+          <span className="hidden sm:inline-block h-4 w-[1px] bg-amber-500/20" />
+
           <button
             type="button"
             onClick={() => setFilterFavorites(false)}
-            className={`font-mono text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-full transition-all ${
+            className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded-full transition-all ${
               !filterFavorites
                 ? 'btn-gold font-medium shadow-md shadow-amber-500/20'
                 : 'text-stone-400 hover:text-white'
             }`}
           >
-            All Photos ({album.photos.length})
+            ทั้งหมด ({album.photos.length})
           </button>
 
           <button
             type="button"
             onClick={() => setFilterFavorites(true)}
-            className={`flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-full transition-all ${
+            className={`flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider px-3 py-1.5 rounded-full transition-all ${
               filterFavorites
                 ? 'bg-rose-500 text-white font-medium shadow-md shadow-rose-500/30'
                 : 'text-stone-400 hover:text-rose-400'
             }`}
           >
             <Heart className={`h-3 w-3 ${favorites.length > 0 ? 'fill-current' : ''}`} />
-            Favorites ({favorites.length})
+            ที่ชอบ ({favorites.length})
           </button>
         </div>
 
-        <span className="font-mono text-[11px] text-stone-400">
-          แตะรูปเพื่อดูเต็มจอ
+        <span className="hidden md:inline font-mono text-[11px] text-stone-400">
+          แตะรูปเพื่อดูเต็มจอ · กดหัวใจเพื่อเลือกรูปส่ง LINE
         </span>
       </div>
 
@@ -261,20 +301,80 @@ export default function AlbumClientView({ album }: AlbumClientViewProps) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3.5 md:gap-4">
-          {displayedPhotos.map((photo, index) => (
-            <ImageCard
-              key={photo.id}
-              photo={photo}
-              index={index}
-              isFavorite={favorites.includes(photo.id)}
-              onToggleFavorite={handleToggleFavorite}
-              onClick={() => {
-                setActivePhotoIndex(index);
-                setLightboxOpen(true);
-              }}
-            />
-          ))}
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3.5 md:gap-4">
+            {displayedPhotos.map((photo, index) => (
+              <ImageCard
+                key={photo.id}
+                photo={photo}
+                index={index}
+                photoNumber={photoNumberById.get(photo.id)}
+                isFavorite={favorites.includes(photo.id)}
+                onToggleFavorite={handleToggleFavorite}
+                onClick={() => {
+                  setActivePhotoIndex(index);
+                  setLightboxOpen(true);
+                }}
+              />
+            ))}
+          </div>
+
+          {/* End-of-Album Navigation Card */}
+          <div className="mt-12 rounded-2xl border border-amber-500/20 bg-[#120f14]/70 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <p className="font-serif text-base sm:text-lg text-white">
+                ดูภาพครบทั้งหมดแล้ว ({displayedPhotos.length} ภาพ)
+              </p>
+              <p className="text-xs font-mono text-stone-400 mt-1">
+                {favorites.length > 0
+                  ? `เลือกไว้แล้ว ${favorites.length} รูป กดสั่งทำทาง LINE เพื่อส่งเลขรูปให้อัตโนมัติได้เลยค่ะ`
+                  : 'สามารถเลือกดูสไตล์อื่นต่อ หรือกดสั่งทำสไตล์นี้ทาง LINE ได้ทันทีค่ะ'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/galleries"
+                className="inline-flex items-center gap-2 rounded-full border border-amber-500/35 bg-amber-500/15 hover:bg-amber-500/25 px-5 py-2.5 font-mono text-xs text-amber-200 transition-all"
+              >
+                <Layers className="h-3.5 w-3.5 text-amber-400" />
+                <span>กลับไปเลือกดูสไตล์อื่นทั้งหมด</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleOrderViaLine}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-5 py-2.5 font-mono text-xs text-white font-semibold shadow-md shadow-[#06C755]/25 transition-all cursor-pointer"
+              >
+                <MessageCircle className="h-3.5 w-3.5 fill-current" />
+                <span>สั่งทำสไตล์นี้ (LINE)</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Floating Quick-Back & Scroll-to-Top Pill (Desktop + Mobile when scrolled) */}
+      {showFloatingNav && !lightboxOpen && (
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 rounded-full border border-amber-500/35 bg-[#0e0c10]/92 backdrop-blur-xl p-1.5 shadow-2xl shadow-black/80 animate-fade-in">
+          <Link
+            href="/galleries"
+            className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 px-3.5 py-2 font-mono text-xs text-amber-200 transition-colors"
+            title="กลับไปหน้ารวมแคตตาล็อกอัลบั้มทั้งหมด"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>รวมอัลบั้ม</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={scrollToTop}
+            className="inline-flex items-center gap-1 rounded-full bg-white/10 hover:bg-white/20 px-3 py-2 font-mono text-xs text-stone-200 transition-colors"
+            title="เลื่อนกลับขึ้นด้านบนสุด"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">บนสุด</span>
+          </button>
         </div>
       )}
 
